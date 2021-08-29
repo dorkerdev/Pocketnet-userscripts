@@ -2,8 +2,8 @@
 // @name         Pocketnet Tools
 // @namespace    http://tampermonkey.net/
 // @version      0.1
-// @description  Pocketnet Tools
-// @author       dorker
+// @description  try to take over the world!
+// @author       You
 // @match        https://pocketnet.app/*
 // @icon         https://www.google.com/s2/favicons?domain=mozilla.org
 // @grant        none
@@ -33,8 +33,9 @@
 
 	function appendVote(el, vote) {
 		var elVote = document.createElement("div");
-		elVote.innerHTML = `<a target="_blank" href="https://pocketnet.app/${vote.name}">${vote.name}</a>: ${vote.value}`;
-		el.parentNode.insertBefore(elVote, el.nextSibling);
+		elVote.innerHTML = `<a target="_blank" href="https://pocketnet.app/${vote.address}">${vote.name}</a>: ${vote.value}`;
+		el.appendChild(elVote);
+        //el.parentNode.insertBefore(elVote, el.nextSibling);
 	}
 
 	function postData(data, responseReturned){
@@ -74,18 +75,19 @@
                             var post = element.classList?.contains("authorgroup")
                             ? element.children[0]
                             : element;
-                            console.log(post.id);
+                            //console.log(post.id);
                             var stars = element.querySelectorAll(".wholikes")[0];
                             if (!stars) return;
                             var link = document.createElement("input");
                             link.type = "button";
                             link.value = "Show votes";
                             link.href = "javascript:void(0)";
-                            stars.parentNode.insertBefore(link, stars.nextSibling);
+                            stars.parentNode.insertBefore(link, stars);
+                            //stars.parentNode.insertBefore(link, stars.nextSibling);
                             //newDiv.addEventListener("onclick", function(e){
                             link.onclick = function(e){
                                 e.target.disabled = true;
-                                displayVotesByPost(post.id, e.target);
+                                displayVotesByPost(post.id, stars);
                             };
                         }
                     }
