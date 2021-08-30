@@ -5,6 +5,7 @@
 // @description  try to take over the world!
 // @author       You
 // @match        https://pocketnet.app/*
+// @match        https://bastyon.com/*
 // @icon         https://www.google.com/s2/favicons?domain=mozilla.org
 // @grant        none
 // ==/UserScript==
@@ -58,49 +59,68 @@
 		xhr.send(JSON.stringify(data));
 	}
 
-    const targetNode = document.body;
-    const config = { attributes: false, childList: true, subtree: true };
+    waitForElement("div.lentaWrapper", document.body, function(el) {
+        console.log("Found " + el.nodeName);
+        observe(el, function(m,el,s) {
+            if (el.nodeName === "#text") return;
+            if (!el.parentNode.matches("div.shares")) return;
+            var post = el.classList?.contains("authorgroup")
+            ? el.children[0] : el;
+            //console.log(post.id);
+            waitForElement(".wholikes", el, function(stars) {
+                if (!stars) return;
+                var link = document.createElement("input");
+                link.type = "button";
+                link.value = "Show votes";
+                stars.parentNode.insertBefore(link, stars);
+                link.onclick = function(e){
+                    e.target.disabled = true;
+                    displayVotesByPost(post.id, stars);
+                };
+            });
+        });
+    });
 
-    const callback = function(mutationsList, observer) {
-        //let postClasses = ["share", "shareinlenta"];
-        //let postClasses = ["authorgroup", "shareinlenta"];
-        // Use traditional 'for loops' for IE 11
-        for(const mutation of mutationsList) {
-            if (mutation.type === 'childList') {
-                mutation.addedNodes.forEach(element => {
-                    if (element.nodeName != "#text"){
-                        //if (element.classList.contains("authorgroup")) {
-                        //if (postClasses.some(x => element.classList.contains(x))) {
-                        if (element.parentNode?.classList?.contains("shares")) {
-                            var post = element.classList?.contains("authorgroup")
-                            ? element.children[0]
-                            : element;
-                            //console.log(post.id);
-                            var stars = element.querySelectorAll(".wholikes")[0];
-                            if (!stars) return;
-                            var link = document.createElement("input");
-                            link.type = "button";
-                            link.value = "Show votes";
-                            link.href = "javascript:void(0)";
-                            stars.parentNode.insertBefore(link, stars);
-                            //stars.parentNode.insertBefore(link, stars.nextSibling);
-                            //newDiv.addEventListener("onclick", function(e){
-                            link.onclick = function(e){
-                                e.target.disabled = true;
-                                displayVotesByPost(post.id, stars);
-                            };
-                        }
-                    }
-                });
-            }
-            //else if (mutation.type === 'attributes') {
-                //console.log('The ' + mutation.attributeName + ' attribute was modified.');
-            //}
+    function waitForElement(sel, targetNode, elementFound) {
+        var el = targetNode.querySelector(sel);
+        if (el) {
+            console.log(sel + " found");
+            elementFound(el);
+            return;
         }
-    };
+        console.log(sel + " NOT found");
+        observe(targetNode, function(m,el,s){
+            if (el.nodeName === "#text") return;
+            //console.log(el.nodeName);
+            var e;
+            if (el.matches(sel) || (e = el.querySelector(sel))){
+                s.abort = true;
+                elementFound(e ? e : el);
+                return;
+            }
+        });
+    }
 
-    const observer = new MutationObserver(callback);
-    observer.observe(targetNode, config);
+    function observe(targetNode, onObserve){
+        var state = {abort: false};
+        const callback = function(mutationsList, observer) {
+            // Use traditional 'for loops' for IE 11
+            for(const mutation of mutationsList) {
+                for(const element of mutation.addedNodes) {
+                    onObserve(mutation, element, state);
+                    if (state.abort) {
+                        observer.disconnect();
+                        return;
+                    }
+                }
+            }
+        }
+
+        const config = { attributes: false, childList: true, subtree: true };
+        const observer = new MutationObserver(callback);
+        observer.observe(targetNode, config);
+    }
+
 
     // Later, you can stop observing
     //observer.disconnect();
