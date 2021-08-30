@@ -60,7 +60,7 @@
 	}
 
     waitForElement("div.lentaWrapper", document.body, function(el) {
-        console.log("Found " + el.nodeName);
+        //console.log("Found " + el.nodeName);
         observe(el, function(m,el,s) {
             if (el.nodeName === "#text") return;
             if (!el.parentNode.matches("div.shares")) return;
@@ -84,11 +84,11 @@
     function waitForElement(sel, targetNode, elementFound) {
         var el = targetNode.querySelector(sel);
         if (el) {
-            console.log(sel + " found");
+            //console.log(sel + " found");
             elementFound(el);
             return;
         }
-        console.log(sel + " NOT found");
+        //console.log(sel + " NOT found");
         observe(targetNode, function(m,el,s){
             if (el.nodeName === "#text") return;
             //console.log(el.nodeName);
