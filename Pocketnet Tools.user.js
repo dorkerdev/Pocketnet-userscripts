@@ -43,16 +43,19 @@
 		var xhr = new XMLHttpRequest();
 		xhr.onreadystatechange = function() {
 			if (this.readyState == 4) {
-				if (this.status == 200) {
-					var response = JSON.parse(this.responseText);
-					responseReturned(response.data);
-					return;
-				} else {
-					alert(`Error: ${this.readyState}`);
-				}
+                switch(this.status){
+                    case 200:
+                        var response = JSON.parse(this.responseText);
+                        responseReturned(response.data);
+                        break;
+                    default:
+                        alert(`Error: ${this.readyState}.\nReport this error as I may have to change the API call to bastyon.com`);
+                        break;
+                }
 			}
 		};
 
+        //will update to bastyon.com when they have it available
 		xhr.open("POST", `https://pocketnet.app:8899/rpc/${data.method}`, true);
 		xhr.setRequestHeader("Content-type", "application/json");
 
