@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Pocketnet Tools
 // @namespace    http://tampermonkey.net/
-// @version      0.5
-// @description  Adds a "Show Votes" button
+// @version      0.55
+// @description  Adds various UI tools to the post/content template: Show votes, permalink
 // @author       dorker
 // @match        https://pocketnet.app/*
 // @match        https://bastyon.com/*
@@ -23,30 +23,30 @@
 		}, dataReceived);
 	}
 
-    function sortMultiple(arr, conditions){
+    function sortMultiple(arr, comparers){
         arr.sort((a,b) => {
             var i;
-            for(const c of conditions){
+            for(const c of comparers){
                 i = c(a,b);
                 if (i !== 0) return i;
             }
         });
     }
 
+    function compareNumbers(a,b){
+        var eq =
+            a > b ? -1 :
+        a < b ? 1 :
+        0;
+        return eq;
+    }
+
 	function displayVotesByPost(txid, el) {
         getVotesByPost(txid, function(data) {
             sortMultiple(data, [
-                (a,b) => {
-                    var aa = parseFloat(a.value);
-                    var bb = parseFloat(b.value);
-                	var eq = aa > bb ? -1 :
-                	aa < bb ? 1 :
-                	0;
-                	return eq;
-                },
+                (a,b) => compareNumbers(parseFloat(a.value), parseFloat(b.value)),
                 (a,b) => a.name.localeCompare(b.name)
             ]);
-			//data.sort((a,b) => parseFloat(a.value) > parseFloat(b.value) ? -1 : 1);
 			for(const vote of data) {
 				appendVote(el, vote);
 			}
