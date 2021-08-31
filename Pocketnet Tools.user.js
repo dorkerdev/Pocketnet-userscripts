@@ -34,7 +34,7 @@
 
 	function appendVote(el, vote) {
 		var elVote = document.createElement("div");
-		elVote.innerHTML = `<a target="_blank" href="https://pocketnet.app/${vote.address}">${vote.name}</a>: ${vote.value}`;
+		elVote.innerHTML = `<a target="_blank" href="${window.location.origin}/${vote.address}">${decodeURIComponent(vote.name)}</a>: ${vote.value}`;
 		el.appendChild(elVote);
         //el.parentNode.insertBefore(elVote, el.nextSibling);
 	}
@@ -59,11 +59,23 @@
 		xhr.send(JSON.stringify(data));
 	}
 
-    waitForElement("div.lentaWrapper", document.body, function(el) {
+    //waitForElement("div.leftpanelcell", document.body, el => { el.style.display = "none"; });
+    //waitForElement("#main .lentacell", document.body, el => { el.style.marginLeft = "0px"; });
+    //waitForElement("#staking", document.body, el => { el.style.display = "none"; });
+    //waitForElement("#maincntwrapper > div > div.mainpanelcell",
+                   //document.body, el => { el.style.display = ""; });
+
+    //waitForElement("div.lentaWrapper", document.body, function(el) {
         //console.log("Found " + el.nodeName);
-        observe(el, function(m,el,s) {
+        //observe(el, function(m,el,s) {
+        //observe(document.body, function(m,el,s) {
+
+    //Looks like I'll have to observe the entire contentWrapper
+    //in order to avoid breaking the script after swapping feeds. At
+    //least now you don't have to refresh the page.
+        observe("div.contentWrapper", function(m,el,s) {
             if (el.nodeName === "#text") return;
-            if (!el.parentNode.matches("div.shares")) return;
+            if (!el.parentNode?.matches("div.shares")) return;
             var post = el.classList?.contains("authorgroup")
             ? el.children[0] : el;
             //console.log(post.id);
@@ -79,7 +91,7 @@
                 };
             });
         });
-    });
+    //});
 
     function waitForElement(sel, targetNode, elementFound) {
         var el = targetNode.querySelector(sel);
@@ -103,6 +115,9 @@
 
     function observe(targetNode, onObserve){
         var state = {abort: false};
+        if (typeof targetNode === "string") {
+            targetNode = document.querySelector(targetNode);
+        }
         const callback = function(mutationsList, observer) {
             // Use traditional 'for loops' for IE 11
             for(const mutation of mutationsList) {
