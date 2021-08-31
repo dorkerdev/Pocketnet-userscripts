@@ -84,13 +84,19 @@
             //console.log(post.id);
             waitForElement(".wholikes", el, function(stars) {
                 if (!stars) return;
+                var container = document.createElement("div");
+                container.style.textAlign = "right";
                 var link = document.createElement("input");
                 link.type = "button";
                 link.value = "Show votes";
-                stars.parentNode.insertBefore(link, stars);
+
+                container.appendChild(link);
+                stars.parentNode.insertBefore(container, null);
+                //stars.appendChild(link);
+                //stars.style.textAlign = "right";
                 link.onclick = function(e){
                     e.target.disabled = true;
-                    displayVotesByPost(post.id, stars);
+                    displayVotesByPost(post.id, container);
                 };
             });
         });
