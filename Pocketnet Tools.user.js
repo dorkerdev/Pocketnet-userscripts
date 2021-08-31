@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Pocketnet Tools
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.5
 // @description  Adds a "Show Votes" button
 // @author       dorker
 // @match        https://pocketnet.app/*
@@ -23,9 +23,30 @@
 		}, dataReceived);
 	}
 
+    function sortMultiple(arr, conditions){
+        arr.sort((a,b) => {
+            var i;
+            for(const c of conditions){
+                i = c(a,b);
+                if (i !== 0) return i;
+            }
+        });
+    }
+
 	function displayVotesByPost(txid, el) {
-		getVotesByPost(txid, function(data) {
-			data.sort((a,b) => parseFloat(a.value) > parseFloat(b.value) ? -1 : 1);
+        getVotesByPost(txid, function(data) {
+            sortMultiple(data, [
+                (a,b) => {
+                    var aa = parseFloat(a.value);
+                    var bb = parseFloat(b.value);
+                	var eq = aa > bb ? -1 :
+                	aa < bb ? 1 :
+                	0;
+                	return eq;
+                },
+                (a,b) => a.name.localeCompare(b.name)
+            ]);
+			//data.sort((a,b) => parseFloat(a.value) > parseFloat(b.value) ? -1 : 1);
 			for(const vote of data) {
 				appendVote(el, vote);
 			}
@@ -34,7 +55,7 @@
 
 	function appendVote(el, vote) {
 		var elVote = document.createElement("div");
-		elVote.innerHTML = `<a target="_blank" href="${window.location.origin}/${vote.address}">${decodeURIComponent(vote.name)}</a>: ${vote.value}`;
+		elVote.innerHTML = `<a target="_blank" href="${vote.address}">${decodeURIComponent(vote.name)}</a>: ${vote.value}`;
 		el.appendChild(elVote);
         //el.parentNode.insertBefore(elVote, el.nextSibling);
 	}
@@ -84,6 +105,18 @@
             //console.log(post.id);
             waitForElement(".wholikes", el, function(stars) {
                 if (!stars) return;
+                var metaHead = post.querySelector("div.metapanel");
+                if (metaHead) {
+                    metaHead.style.setProperty("width","auto","important");
+                    metaHead.style.textAlign = "right";
+                    var perma = document.createElement("a");
+                    perma.href = `post?s=${post.id}`;
+                    perma.style.paddingRight = "10px";
+                    perma.target = "_blank";
+                    perma.innerText = "permalink";
+                    metaHead.prepend(perma);
+                }
+
                 var container = document.createElement("div");
                 container.style.textAlign = "right";
                 var link = document.createElement("input");
