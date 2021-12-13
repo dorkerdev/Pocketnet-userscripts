@@ -9,6 +9,15 @@
 // @icon         https://www.google.com/s2/favicons?domain=mozilla.org
 // @grant        none
 // ==/UserScript==
+// If you also want to auto-upvote everything visible on a user's feed,
+// replace the two lines above with this:
+//
+// @match        https://pocketnet.app/*
+// @match        https://bastyon.com/*
+//
+// Remember, only two upvotes per user per 24 hours affects rep.
+// Anything above that is a wasted vote, so only use if you've already
+// upvoted almost everything on a user's feed
 
 (function() {
     'use strict';
@@ -21,8 +30,6 @@
     //
     //Note: Will upvote every post in the main feed and any user feed you're
     //unless the user is in excludedAddresses
-
-    var exclusiveAddresses = [];
 
     //If you only want to upvote specific accounts, add the addresses to
     //exclusiveAddresses in the same way. Overrides/ignores excludedAddresses
@@ -47,16 +54,20 @@
 
         //debugger;
 
+        //todo: detect whether or not you're on user page. If user, only
+        //upvote two posts and then stop
+
         waitForElement("div.starswr", el, function(stars) {
             //don't upvote post if you've already upvoted it
             if (el.classList.contains("liked")) return;
 
-            var fiveStar = stars.querySelector("i.far.fa-star[value='5']");
+            var elStar = stars.querySelector("i.far.fa-star[value='5']");
             //note: If you want to make this script auto-downvote everything,
-            //change the CSS selector to "i.far.fa-star[value='1']"
+            //change the CSS selector to "i.far.fa-star[value='1']". Haven't,
+            //tested that, but it should work. Use at your own risk.
 
             //debugger;
-            fiveStar.click();
+            elStar.click();
         });
     });
 
