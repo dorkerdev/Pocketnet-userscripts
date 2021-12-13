@@ -15,7 +15,7 @@
 // @match        https://pocketnet.app/*
 // @match        https://bastyon.com/*
 //
-// Remember, only two upvotes per user per 24 hours affects rep.
+// Remember, only two upvotes per user per 48 hours affects rep.
 // Anything above that is a wasted vote, so only use if you've already
 // upvoted almost everything on a user's feed
 
