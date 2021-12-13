@@ -33,6 +33,7 @@
 
     //If you only want to upvote specific accounts, add the addresses to
     //exclusiveAddresses in the same way. Overrides/ignores excludedAddresses
+    var exclusiveAddresses = [];
 
     observe("div.contentWrapper", function(m,el,s) {
         if (el.nodeName === "#text") return;
