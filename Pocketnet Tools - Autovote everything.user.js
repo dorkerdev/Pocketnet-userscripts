@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Pocketnet Tools - Autovote everything
 // @namespace    http://tampermonkey.net/
-// @version      0.0001
+// @version      current
 // @description  Upvotes everything in the feed you're on
 // @author       dorker
 // @match        https://pocketnet.app/*
@@ -66,7 +66,7 @@
     IMPORTANT READ: If you don't add addresses to excludedAddresses OR
     exclusiveAddresses, you will end up auto-voting EVERYTHING in the feed. If
     that is what you want and you don't care about blowing through all your
-    votes, go for it.
+    votes in five minutes, go for it.
     */
 
     /*
@@ -146,7 +146,7 @@
 
                 /*
                 note: If you want to make this script auto-downvote everything, change above
-                "voteValue = 5" to "voteValue = 1". Haven't, tested that, but it should work.
+                "voteValue = 5" to "voteValue = 1". Haven't tested that, but it should work.
                 Use at your own risk.
                 */
 
