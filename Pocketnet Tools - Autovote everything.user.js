@@ -25,6 +25,8 @@ everything on a user's feed
         isIndex = window.location.pathname === "/index";
     }
 
+    SetIsIndex();
+
     //Uncomment this line if you only want to autovote on the main feed
     //if (!isIndex) return;
 
@@ -52,7 +54,9 @@ everything on a user's feed
     If you only want to upvote specific accounts, add the addresses to
     exclusiveAddresses in the same way. Overrides/ignores excludedAddresses
     even if you've added addresses to it.
+    */
 
+    /*
     exclusiveAddresses = [
         "ADDRESS1",
         "ADDRESS2",
@@ -60,9 +64,12 @@ everything on a user's feed
     ];
     //*/
 
-    ///*
-    exclusiveAddresses = [];
-    //*/
+    /*
+    IMPORTANT READ: If you don't add addresses to excludedAddresses OR
+    exclusiveAddresses, you will end up auto-voting EVERYTHING in the feed. If
+    that is what you want and you don't care about blowing through all your
+    votes, go for it.
+    */
 
     //debugger;
 
@@ -70,7 +77,7 @@ everything on a user's feed
     /*
     some shite i copy/pasta'd to detect when the url changes since the
     web site is an spa. seems to work
-    //*/
+    */
     history.pushState = ( f => function pushState(){
         var ret = f.apply(this, arguments);
         window.dispatchEvent(new Event('pushstate'));
@@ -117,16 +124,17 @@ everything on a user's feed
 
             //debugger;
 
-            /*
-            todo: detect whether or not you're on user page. If user, only upvote
-            two posts and then stop
-            */
-
             waitForElement("div.starswr", elHeader, function(stars) {
                 //don't upvote post if you've already upvoted it
-                if (el.classList.contains("liked") || (!isIndex && voteCount >= 2)) return;
+                if (el.classList.contains("liked") || (isIndex === false && voteCount >= 2)) return;
 
-                var elStar = stars.querySelector("i.far.fa-star[value='5']");
+                var selector;
+                var voteValue = 5;
+
+                //selector = `i.far.fa-star[value='${voteValue}']`
+                selector = `.starsWrapper.starsWrapperM > div > i.far.fa-star[value='${voteValue}']`;
+
+                var elStar = stars.querySelector(selector);
 
                 /*
                 note: If you want to make this script auto-downvote everything, change the
@@ -138,6 +146,13 @@ everything on a user's feed
 
                 //debugger;
                 elStar.click();
+
+                /*
+                window.setTimeout(() => {
+                    //console.log("in timeout");
+                    elStar.click();
+                }, 2000);
+                */
 
                 voteCount++;
             });
