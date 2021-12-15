@@ -14,6 +14,14 @@
     'use strict';
 
     /*
+    HOW TO USE: Read the comments below preceded by INSTRUCTION (ctrl+f will take
+    you to all of them). If you install this script and let it run as-is, you will
+    end up auto-voting on EVERYTHING in the feeds (except for user feeds which are
+    capped at 2 per page load). Read INSTRUCTIONs below on how to add addresses to
+    excludedAddresses and exclusiveAddresses.
+    */
+
+    /*
     isIndex is used to detect whether you're on bastyon.com/index (usually main feed).
     Otherwise, user feed is assumed.
     */
@@ -31,6 +39,8 @@
     var excludedAddresses;
 
     /*
+    INSTRUCTION:
+
     If you don't want to upvote certain users, just add their address to the
     above array like so:
 
@@ -49,6 +59,8 @@
     var exclusiveAddresses;
 
     /*
+    INSTRUCTION:
+
     If you only want to upvote specific accounts, add the addresses to
     exclusiveAddresses in the same way. Overrides/ignores excludedAddresses
     even if you've added addresses to it.
@@ -103,6 +115,8 @@
     var voteCount = 0;
 
     /*
+    INSTRUCTION:
+
     Only 2 votes per account per 48 hours affects rep. Anything in excess of that
     is a wasted vote. To help prevent wasting your votes while on a user feed,
     maxUserFeedVotes is set to 2 so that you only upvote the top 2 posts. If you
@@ -117,11 +131,25 @@
     });
     //END SHITE
 
+    var starSelector;
+    var voteValue = 5;
+
+    /*
+    INSTRUCTION:
+
+    note: If you want to make this script auto-downvote everything, change above
+    "voteValue = 5" to "voteValue = 1". Haven't tested that, but it should work.
+    Use at your own risk.
+    */
+
+    //todo: Create separate address lists for upvoting and downvoting
+
+    //starSelector = `i.far.fa-star[value='${voteValue}']`
+    starSelector = `.starsWrapper.starsWrapperM > div > i.far.fa-star[value='${voteValue}']`;
+
     observe("div.contentWrapper", function(m,el,s) {
         if (el.nodeName === "#text") return;
         if (!el.parentNode?.matches("div.shares")) return;
-        //var post = el.classList?.contains("authorgroup")
-        //? el.children[0] : el;
 
         //debugger;
 
@@ -141,21 +169,7 @@
                 //don't upvote post if you've already upvoted it
                 if (el.classList.contains("liked") || (isIndex === false && voteCount >= 2)) return;
 
-                var selector;
-                var voteValue = 5;
-
-                /*
-                note: If you want to make this script auto-downvote everything, change above
-                "voteValue = 5" to "voteValue = 1". Haven't tested that, but it should work.
-                Use at your own risk.
-                */
-
-                //selector = `i.far.fa-star[value='${voteValue}']`
-                selector = `.starsWrapper.starsWrapperM > div > i.far.fa-star[value='${voteValue}']`;
-
-                var elStar = stars.querySelector(selector);
-
-                //todo: Create separate address lists for upvoting and downvoting
+                var elStar = stars.querySelector(starSelector);
 
                 //debugger;
 
