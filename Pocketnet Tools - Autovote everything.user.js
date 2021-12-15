@@ -10,15 +10,13 @@
 // @grant        none
 // ==/UserScript==
 
-/*
-Remember, only two upvotes per user per 48 hours affects rep. Anything
-above that is a wasted vote, so only use if you've already upvoted almost
-everything on a user's feed
-*/
-
 (function() {
     'use strict';
 
+    /*
+    isIndex is used to detect whether you're on bastyon.com/index (usually main feed).
+    Otherwise, user feed is assumed.
+    */
     var isIndex;
 
     function SetIsIndex(){
@@ -71,6 +69,12 @@ everything on a user's feed
     votes, go for it.
     */
 
+    /*
+    TODO: Allow these lists to be maintainable through some UI so that you
+    don't have to edit code. Will this ever happen? Probably not because my
+    JavaScript engineering skills are pretty shite.
+    */
+
     //debugger;
 
     //SHITE
@@ -97,6 +101,15 @@ everything on a user's feed
     });
 
     var voteCount = 0;
+
+    /*
+    Only 2 votes per account per 48 hours affects rep. Anything in excess of that
+    is a wasted vote. To help prevent wasting your votes while on a user feed,
+    maxUserFeedVotes is set to 2 so that you only upvote the top 2 posts. If you
+    want to upvote everything currently loaded on the user feed, just set this to
+    some yuge number like 9999 or something.
+    */
+    var maxUserFeedVotes = 2;
 
     window.addEventListener('locationchange', function(){
         voteCount = 0;
@@ -131,20 +144,22 @@ everything on a user's feed
                 var selector;
                 var voteValue = 5;
 
+                /*
+                note: If you want to make this script auto-downvote everything, change above
+                "voteValue = 5" to "voteValue = 1". Haven't, tested that, but it should work.
+                Use at your own risk.
+                */
+
                 //selector = `i.far.fa-star[value='${voteValue}']`
                 selector = `.starsWrapper.starsWrapperM > div > i.far.fa-star[value='${voteValue}']`;
 
                 var elStar = stars.querySelector(selector);
 
-                /*
-                note: If you want to make this script auto-downvote everything, change the
-                CSS selector to "i.far.fa-star[value='1']". Haven't, tested that, but it
-                should work. Use at your own risk.
-                */
-
                 //todo: Create separate address lists for upvoting and downvoting
 
                 //debugger;
+
+                //click the star that matches the selector
                 elStar.click();
 
                 /*
@@ -152,12 +167,14 @@ everything on a user's feed
                     //console.log("in timeout");
                     elStar.click();
                 }, 2000);
-                */
+                //*/
 
                 voteCount++;
             });
         });
     });
+
+    //don't edit any of the code below
 
     function waitForElement(sel, targetNode, elementFound) {
         var els = targetNode.querySelectorAll(sel);
