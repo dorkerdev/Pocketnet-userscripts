@@ -45,9 +45,9 @@
     above array like so:
 
     excludedAddresses = [
-        "ADDRESS1",
-        "ADDRESS2",
-        "aDDRESS3"
+        "PAsNipPlefRNkdHQF9Jp0opxp3n1sqfwBJ",
+        "cMd3eNdcGcNdFMdUjIZzd4CZDL76bgvVaf",
+        "PSSL82knV6zKaNus47TBXa84f2cYTPA2eT"
     ];
 
     You can add as many as you like.
@@ -63,14 +63,15 @@
 
     If you only want to upvote specific accounts, add the addresses to
     exclusiveAddresses in the same way. Overrides/ignores excludedAddresses
-    even if you've added addresses to it.
+    even if you've added addresses to it. Just copy the code below and paste
+    it under "var exclusiveAddresses" above.
     */
 
     /*
     exclusiveAddresses = [
-        "ADDRESS1",
-        "ADDRESS2",
-        "aDDRESS3"
+        "PAsN39RgaSsNkdHQF9JB0Obw5zBaWqfwBJ",
+        "PhaRTcGcMd3eNdFU3dYUd4CZDL76bgvVaf",
+        "PTeF87SBVshIte2c53qPisSTeeQnipGWw9"
     ];
     //*/
 
@@ -134,6 +135,9 @@
     var starSelector;
     var voteValue = 5;
 
+    //starSelector = `i.far.fa-star[value='${voteValue}']`
+    starSelector = `.starsWrapper.starsWrapperM > div > i.far.fa-star[value='${voteValue}']`;
+
     /*
     INSTRUCTION:
 
@@ -143,9 +147,6 @@
     */
 
     //todo: Create separate address lists for upvoting and downvoting
-
-    //starSelector = `i.far.fa-star[value='${voteValue}']`
-    starSelector = `.starsWrapper.starsWrapperM > div > i.far.fa-star[value='${voteValue}']`;
 
     observe("div.contentWrapper", function(m,el,s) {
         if (el.nodeName === "#text") return;
@@ -167,7 +168,8 @@
 
             waitForElement("div.starswr", elHeader, function(stars) {
                 //don't upvote post if you've already upvoted it
-                if (el.classList.contains("liked") || (isIndex === false && voteCount >= 2)) return;
+                //debugger;
+                if (el.classList.contains("liked") || (isIndex === false && voteCount >= maxUserFeedVotes)) return;
 
                 var elStar = stars.querySelector(starSelector);
 
