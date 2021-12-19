@@ -148,45 +148,105 @@
 
     //todo: Create separate address lists for upvoting and downvoting
 
+    function TryIt(tryFunc, errorMessage){
+        var result;
+        try{
+            result = tryFunc();
+        }catch{
+            sitemessage(errorMessage || "Tried it, but it didn't work");
+        }
+    }
+
+    function GetParentMatch(el, selector, matchSelf) {
+        if (matchSelf !== true) el = el.parentNode;
+
+        while(el){
+            if (el.matches(selector)) return el;
+            el = el.parentNode;
+        }
+
+        return null;
+    }
+
     observe("div.contentWrapper", function(m,el,s) {
         if (el.nodeName === "#text") return;
-        if (!el.parentNode?.matches("div.shares")) return;
+
+        //console.log(el);
+        //debugger;
+        if (!el.matches("div.authorgroup")) return;
+
+        //if (!el.matches("div.itemwr.table.unselectable")) return;
+
+        //var elHeader = GetParentMatch(el, "div.shareTable.truerepost");
+
+        //if (!el.parentNode?.matches("div.shares")) return;
 
         //debugger;
 
-        waitForElement("div.shareTable.truerepost", el, elHeader => {
+        //waitForElement("div.shareTable.truerepost", el, elHeader => {
+        observe(el, function(m2,el2,s2) {
+        //waitForElement("div.itemwr.table.unselectable", el, el => {
+        //observe(el, function(m,el,s) {
+            if (el2.nodeName === "#text") return;
+            if (!el2.matches("div.itemwr.table.unselectable")) return;
+
+            //console.log(el2);
+
+            //return;
+            var elHeader = GetParentMatch(el2, "div.shareTable.truerepost");
             var address = elHeader.getAttribute("address");
             var txid = elHeader.getAttribute("stxid");
+            var name = elHeader.querySelector("span.adr").innerText;
 
-            if (exclusiveAddresses && exclusiveAddresses.length > 0){
-                if (!exclusiveAddresses.includes(address)) return;
-            }else if (excludedAddresses && excludedAddresses.includes(address)) {
-                return;
+            //console.log(name);
+            //debugger;
+
+            var override;
+
+            if (!override){
+                if (exclusiveAddresses &&exclusiveAddresses.length > 0){
+                    if (!exclusiveAddresses.includes(address)) return;
+                }else if (excludedAddresses &&excludedAddresses.includes(address)) {
+                    return;
+                }
             }
 
             //debugger;
 
-            waitForElement("div.starswr", elHeader, function(stars) {
-                //don't upvote post if you've already upvoted it
-                //debugger;
-                if (el.classList.contains("liked") || (isIndex === false && voteCount >= maxUserFeedVotes)) return;
+            var stars = el.querySelector("div.starswr");
+            //waitForElement("div.starswr", elHeader, function(stars) {
+            if (isIndex === false && voteCount >= maxUserFeedVotes) return;
 
-                var elStar = stars.querySelector(starSelector);
-
-                //debugger;
-
-                //click the star that matches the selector
-                elStar.click();
+            TryIt(() => {
 
                 /*
+                Don't upvote post if you've already upvoted it. Doesn't really work
+                because the website doesn't pull back this metadata when retrieving
+                posts. The "liked" class is only added when you click a star, so this
+                check is superfluous. Will keep it just in case it's usefull later.
+                */
+
+                var wrapper = stars.querySelector(".stars.likeAction");
+
+                if (wrapper?.classList.contains("liked")) return;
+
+                /*
+                Seems that a recent change in join.min.js%3fv=66795717685 causes elStar to be added
+                after its parent element rather than at the same time. Have to wait for it to show
+                in the DOM before clicking.
+                */
+
+                var elStar = el.querySelector(starSelector);
+
+                //timeout to give time for click event to be assigned
                 window.setTimeout(() => {
                     //console.log("in timeout");
-                    elStar.click();
+                    TryIt(() => elStar.click());
                 }, 2000);
-                //*/
 
-                voteCount++;
             });
+
+            voteCount++;
         });
     });
 
