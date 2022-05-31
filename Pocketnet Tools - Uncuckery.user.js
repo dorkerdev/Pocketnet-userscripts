@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Pocketnet Tools - Uncuckery
 // @namespace    http://tampermonkey.net/
-// @version      0.55
+// @version      0.00
 // @description  Uncuck it
 // @author       dorker
 // @match        https://bastyon.com/*
@@ -47,7 +47,9 @@
         }
 
         /*
-        All code below removes any functionality
+        All code below removes any functionality that hides content from
+        the feeds or comment sections, usually accounts with low rep or
+        comments that have been highly downvoted
         */
         waitUntil(() => app.platform.sdk.user.scamcriteria)
             .then(() => {
@@ -91,6 +93,10 @@
                 };
             });
 
+		/*
+		Disables the function that gets boosted posts, preventing them from
+		being shown in the feeds
+		*/
         waitUntil(() => app.platform.sdk.node.shares.getboost)
             .then(() => { app.platform.sdk.node.shares.getboost = function(e, t, n) { }; }
         );
