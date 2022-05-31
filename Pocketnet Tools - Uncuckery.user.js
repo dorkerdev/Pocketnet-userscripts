@@ -93,6 +93,16 @@
                 };
             });
 
+        /*
+        Disables minimum rep limit to post images to comments
+        */
+        waitUntil(() => app.platform.sdk.user.canuseimagesincomments)
+            .then(() => {
+                app.platform.sdk.user.canuseimagesincomments = function(e) {
+                    return true;
+                };
+            });
+
 		/*
 		Disables the function that gets boosted posts, preventing them from
 		being shown in the feeds
