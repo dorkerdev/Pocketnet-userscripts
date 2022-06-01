@@ -23,6 +23,41 @@
 		}, dataReceived);
 	}
 
+	function displayBlockMessage(blockerAddress, el) {
+		postData({
+		  "parameters": [
+			[
+			  blockerAddress
+			],
+			"0"
+		  ],
+		  "method": "getuserprofile",
+		  "options": {
+			"node": null
+		  },
+		  "state": 1
+		}, function(data){
+			//var lajson = localStorage.pool;
+			//var la = JSON.parse(lajson);
+			//var user = Object.keys(la.map)[0];
+            var user = app.platform.sdk.address.pnet().address;
+            var blockIndex = data[0].blocking.indexOf(user);
+            if (blockIndex > -1) {
+            	var div = document.createElement("div");
+            	div.style.color = "Red";
+            	div.innerText = "You have been blocked by this user";
+				el.parentNode.insertBefore(div, el.nextSibling);
+            }else{
+            	/*
+                var div = document.createElement("div");
+            	div.style.color = "Green";
+            	div.innerText = "You have NOT been blocked by this user";
+				el.parentNode.insertBefore(div, el.nextSibling);
+                //*/
+            }
+		});
+	}
+
     function sortMultiple(arr, comparers){
         arr.sort((a,b) => {
             var i;
@@ -55,7 +90,7 @@
 
 	function appendVote(el, vote) {
 		var elVote = document.createElement("div");
-		elVote.innerHTML = `<a target="_blank" href="${vote.address}">${decodeURIComponent(vote.name)}</a>: ${vote.value}`;
+		elVote.innerHTML = `<a target="_blank" href="${vote.address}">${decodeURIComponent(vote.name)} (${(vote.reputation/10).toLocaleString()})</a>: ${vote.value}`;
 		el.appendChild(elVote);
         //el.parentNode.insertBefore(elVote, el.nextSibling);
 	}
@@ -66,6 +101,7 @@
 			if (this.readyState == 4) {
                 switch(this.status){
                     case 200:
+                    case 208:
                         var response = JSON.parse(this.responseText);
                         responseReturned(response.data);
                         break;
@@ -83,57 +119,66 @@
 		xhr.send(JSON.stringify(data));
 	}
 
-    //waitForElement("div.leftpanelcell", document.body, el => { el.style.display = "none"; });
-    //waitForElement("#main .lentacell", document.body, el => { el.style.marginLeft = "0px"; });
-    //waitForElement("#staking", document.body, el => { el.style.display = "none"; });
-    //waitForElement("#maincntwrapper > div > div.mainpanelcell",
-                   //document.body, el => { el.style.display = ""; });
-
-    //waitForElement("div.lentaWrapper", document.body, function(el) {
-        //console.log("Found " + el.nodeName);
-        //observe(el, function(m,el,s) {
-        //observe(document.body, function(m,el,s) {
-
     //Looks like I'll have to observe the entire contentWrapper
     //in order to avoid breaking the script after swapping feeds. At
     //least now you don't have to refresh the page.
-        observe("div.contentWrapper", function(m,el,s) {
-            if (el.nodeName === "#text") return;
-            if (!el.parentNode?.matches("div.shares")) return;
-            var post = el.classList?.contains("authorgroup")
-            ? el.children[0] : el;
-            //console.log(post.id);
-            waitForElement(".wholikes", el, function(stars) {
-                if (!stars) return;
-                var metaHead = post.querySelector("div.metapanel");
-                if (metaHead) {
-                    metaHead.style.setProperty("width","auto","important");
-                    metaHead.style.textAlign = "right";
-                    var perma = document.createElement("a");
-                    perma.href = `post?s=${post.id}`;
-                    perma.style.paddingRight = "10px";
-                    perma.target = "_blank";
-                    perma.innerText = "permalink";
-                    metaHead.prepend(perma);
-                }
+    observe("div.contentWrapper", function(m,el,s) {
+        if (el.nodeName === "#text") return;
+        if (!el.parentNode?.matches("div.shares")) return;
 
-                var container = document.createElement("div");
-                container.style.textAlign = "right";
-                var link = document.createElement("input");
-                link.type = "button";
-                link.value = "Show votes";
+        /*
+        Must get entire post element which includes the post and the
+        comment textbox.
+        */
+        var post = el.classList?.contains("authorgroup")? el.children[0] : el;
 
-                container.appendChild(link);
-                stars.parentNode.insertBefore(container, null);
-                //stars.appendChild(link);
-                //stars.style.textAlign = "right";
-                link.onclick = function(e){
-                    e.target.disabled = true;
-                    displayVotesByPost(post.id, container);
-                };
+        /*
+        Wait for the elipses menu to add permalink above it
+        */
+        waitForElement("div.metapanel", post, metaHead => {
+            metaHead.style.setProperty("width","auto","important");
+            metaHead.style.textAlign = "right";
+            var perma = document.createElement("a");
+            perma.href = `post?s=${post.id}`;
+            perma.style.paddingRight = "10px";
+            perma.target = "_blank";
+            perma.innerText = "permalink";
+            metaHead.prepend(perma);
+        });
+
+        /*
+        Add button to show votes
+        */
+        waitForElement("div.panel.sharepanel", post, function(panel) {
+            var container = document.createElement("div");
+            container.style.textAlign = "right";
+            var link = document.createElement("input");
+            link.type = "button";
+            link.value = "Show votes";
+
+            container.appendChild(link);
+            panel.parentNode.appendChild(container);
+
+            link.onclick = function(e){
+                //e.target.disabled = true;
+                displayVotesByPost(post.id, container);
+            };
+        });
+
+        /*
+        Wait for comment textbox to add onclick even to check if post
+        author has user blocked.
+        */
+        waitForElement("textarea.leaveCommentPreview", post, e =>{
+            var info = post.querySelector(".shareTable.post.truerepost");
+            var addr = info?.getAttribute("address");
+            e.addEventListener("click", x =>{
+                //console.log(addr);
+                var div = post.querySelector("div.emojionearea.leaveComment");
+                displayBlockMessage(addr, div);
             });
         });
-    //});
+    });
 
     function waitForElement(sel, targetNode, elementFound) {
         var el = targetNode.querySelector(sel);
@@ -177,8 +222,4 @@
         const observer = new MutationObserver(callback);
         observer.observe(targetNode, config);
     }
-
-
-    // Later, you can stop observing
-    //observer.disconnect();
 })();
