@@ -22,6 +22,39 @@ switch to their media server which does not appear to support PNG, but it will s
 (function() {
     'use strict';
 
+    function waitUntil(isTrue, interval) {
+        function TryIt() {
+            var ret;
+            try {
+                ret = isTrue();
+            }catch {
+
+            }
+
+            if (!ret) console.log("not true yet");
+
+            return ret;
+        }
+
+        var p = new Promise((resolve, reject) => {
+            var ret = TryIt();
+            if (ret) {
+                resolve(ret);
+            } else {
+                var isTrueHandle = window.setInterval(function(){
+                    ret = TryIt();
+                    if (ret) {
+                        window.clearInterval(isTrueHandle);
+                        console.log("cleared interval");
+                        resolve(ret);
+                    }
+                }, interval || 500);
+            }
+        });
+
+        return p;
+    }
+
 	function displayBlockMessage(blockerAddress) {
         app.api.rpc("getuserprofile", [[blockerAddress],"0"]).then(data => {
 			var user = app.platform.sdk.address.pnet().address;
