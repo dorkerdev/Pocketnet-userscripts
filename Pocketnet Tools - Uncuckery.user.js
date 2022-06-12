@@ -94,6 +94,15 @@
             });
 
         /*
+        waitUntil(() => app.platform.sdk.user.isNotAllowedName)
+            .then(() => {
+                app.platform.sdk.user.isNotAllowedName = function(e) {
+                    return true;
+                };
+            });
+        //*/
+
+        /*
         Disables minimum rep limit to post images to comments
         */
         waitUntil(() => app.platform.sdk.user.canuseimagesincomments)
@@ -167,8 +176,41 @@
                                 return Promise.resolve(e);
                             });
                         case "getprofilefeed":
+                        case "gethierarchicalstrip":
+                            var dt = new Date()
+                            dt = dt.addHours(-(dt.getTimezoneOffset() / 60));
                             return ret.then(function(e) {
-                                e.contents.forEach(x => nukeDonateComment(x.lastComment));
+
+                                switch(n) {
+                                    case "gethierarchicalstrip":
+                                        var filtered = e.contents.filter(x => {
+                                            var repPerDay = 0;
+                                            var upvotesPerPost = 0;
+
+                                            ///*
+                                            var regDate = new Date(x.userprofile.regdate * 1000);
+                                            var accountAgeDays = (dt - regDate) / 1000 / 3600 / 24;
+
+                                            repPerDay = x.userprofile.reputation / accountAgeDays;
+                                            upvotesPerPost = x.userprofile.likers_count / x.userprofile.postcnt;
+                                            //*/
+
+                                            return repPerDay < 20 && upvotesPerPost < 10;
+                                        });
+
+                                        if (filtered.length === 0) {
+                                            e.contents = [e.contents[e.contents.length -1]];
+                                        } else {
+                                            e.contents = filtered;
+                                        }
+                                        break;
+                                }
+
+                                e.contents.forEach(x => {
+                                    nukeDonateComment(x.lastComment);
+                                    x.s.f = "0";
+                                });
+
                                 return Promise.resolve(e);
                             });
                         default:
