@@ -137,7 +137,7 @@ switch to their media server which does not appear to support PNG, but it will s
             name: "Hide Left Panel",
             id: "hideleftpanel",
             type: "BOOLEAN",
-            value: true,
+            value: false,
         },
         {
             name: "Show Post Votes",
