@@ -17,9 +17,10 @@
 you're blocked when you go to send
 - Disable Bastyon's proprietary image downscaling, brutal encoding, and conversion. Supports PNG! This might break when they
 switch to their media server which does not appear to support PNG, but it will still retain the quality of your JPGs
+- 2022-06-13 All features are now configurable through user settings
 */
 
-(function() {
+(async function() {
     'use strict';
 
     function waitUntil(isTrue, interval) {
@@ -118,6 +119,267 @@ switch to their media server which does not appear to support PNG, but it will s
         //el.parentNode.insertBefore(elVote, el.nextSibling);
 	}
 
+    function init() {
+        return waitUntil(() => app.platform.sdk.address.pnet);
+        /*
+        return new Promise(resolve => {
+            setTimeout(() => {
+                resolve(x);
+            }, 5000);
+        });
+        //*/
+    }
+
+    //var xxx = await init();
+
+    var customParams = [
+        {
+            name: "Hide Left Panel",
+            id: "hideleftpanel",
+            type: "BOOLEAN",
+            value: true,
+        },
+        {
+            name: "Show Post Votes",
+            id: "showvotes",
+            type: "BOOLEAN",
+            value: false,
+        },
+        {
+            name: "Bastyhax",
+            id: "uncuck",
+            type: "BOOLEAN",
+            value: true,
+        },
+        {
+            name: "Show Block Message",
+            id: "showblockmessage",
+            type: "BOOLEAN",
+            value: true,
+        },
+        {
+            name: "Add Comment Sidebar Link",
+            id: "commentsidebarlink",
+            type: "BOOLEAN",
+            value: true,
+        },
+        {
+            name: "Hide Boosted Content",
+            id: "hideboost",
+            type: "BOOLEAN",
+            value: true,
+        },
+        {
+            name: "Show User Block List",
+            id: "showuserblocks",
+            type: "BOOLEAN",
+            value: true,
+        },
+        {
+            name: "Disable Default Image Resizer/Converter",
+            id: "disableimageresize",
+            type: "BOOLEAN",
+            value: true,
+        },
+        //*
+        {
+            name: "Rep per day threshhold",
+            id: "repperdaythreshhold",
+            type: "STRINGANY",
+            value: "20",
+        },
+        {
+            name: "Upvote per post threshold",
+            id: "upvotesperpostthreshhold",
+            type: "STRINGANY",
+            value: "10",
+        }
+        //*/
+    ];
+
+    /*
+    waitUntil(() => app.platform.sdk.usersettings.init).then(() => {
+        var init = app.platform.sdk.usersettings.init;
+        app.platform.sdk.usersettings.init = function(t) {
+            _.each(customParams, p => {
+                app.platform.sdk.usersettings.meta[p.id] = p;
+            });
+            return init(t);
+        }
+    });
+    //*/
+    var _initialized = false;
+    var getUserSetting = function(key) {
+        if (!_initialized) {
+            _.each(customParams, p => {
+                app.platform.sdk.usersettings.meta[p.id] = p;
+            });
+            app.platform.sdk.usersettings.init();
+            _initialized = true;
+        }
+
+        return app.platform.sdk.usersettings.meta[key].value;
+    }
+
+    waitUntil(() => app.platform.sdk).then(sdk => {
+
+        if (getUserSetting("hideleftpanel")) {
+            var sheet;
+
+            waitUntil(() => sheet = document.querySelector('link[href*=master]').sheet)
+                .then(() => {
+                sheet.insertRule("#main:not(.videomain) .leftpanelcell {display: none}",0);
+                sheet.insertRule("#main:not(.videomain) .lentacell { margin-left: 0 }",0);
+            });
+        }
+
+        waitUntil(() => sdk.usersettings.createall).then(() => {
+            var createall = sdk.usersettings.createall;
+            sdk.usersettings.createall = function() {
+                ///*
+                customParams.forEach(p => {
+                    sdk.usersettings.meta[p.id] = p;
+                });
+                //*/
+                var settings = createall();
+                return settings;
+            };
+        });
+
+        waitUntil(() => sdk.usersettings.compose).then(() => {
+            var a = sdk.usersettings;
+            var compose = a.compose;
+            sdk.usersettings.compose = function() {
+                var e = arguments[0];
+                var composed = compose(e);
+                var s = a.meta;
+
+                var params = [];
+
+                function pushAndReturn(value) {
+                    var i = params.push(value);
+                    return params[i-1];
+                }
+
+                composed.c.dorkershit = {
+                    class: "dorker",
+                    name: "Dorkershit",
+                    options: {}
+                }
+
+                customParams.forEach(p =>
+                {
+                    composed.c.dorkershit.options[p.id] = composed.o[p.id];
+                });
+
+                return composed;
+            };
+        });
+
+        var noboost = getUserSetting("hideboost");
+
+        /*
+        Disables the function that gets boosted posts, preventing them from
+        being shown in the feeds
+        */
+        waitUntil(() => sdk.node.shares.getboost)
+            .then(() => { sdk.node.shares.getboost = function(e, t, n) { }; }
+                 );
+
+        if (getUserSetting("uncuck")) {
+            /*
+            All code below removes any functionality that hides content from
+            the feeds or comment sections, usually accounts with low rep or
+            comments that have been highly downvoted
+            */
+            waitUntil(() => app.platform.sdk.user.scamcriteria)
+                .then(() => {
+                app.platform.sdk.user.scamcriteria = function(e) {
+                    return false;
+                };
+            });
+
+            waitUntil(() => app.platform.sdk.user.upvotevalueblockcriteria)
+                .then(() => {
+                app.platform.sdk.user.upvotevalueblockcriteria = function(e) {
+                    return false;
+                };
+            });
+
+            waitUntil(() => app.platform.sdk.user.reputationBlockedMe)
+                .then(() => {
+                app.platform.sdk.user.reputationBlockedMe = function(e) {
+                    return false;
+                };
+            });
+
+            waitUntil(() => app.platform.sdk.user.reputationBlockedNotMe)
+                .then(() => {
+                app.platform.sdk.user.reputationBlockedNotMe = function(e) {
+                    return false;
+                };
+            });
+
+            //*/
+            waitUntil(() => app.platform.sdk.user.reputationBlocked)
+                .then(() => {
+                app.platform.sdk.user.reputationBlocked = function(e) {
+                    return false;
+                };
+            });
+            //*/
+
+            waitUntil(() => app.platform.sdk.user.hiddenComment)
+                .then(() => {
+                app.platform.sdk.user.hiddenComment = function(e) {
+                    return false;
+                };
+            });
+
+            ///*
+            waitUntil(() => app.platform.sdk.user.isNotAllowedName)
+                .then(() => {
+                app.platform.sdk.user.isNotAllowedName = function(e) {
+                    return true;
+                };
+            });
+            //*/
+
+            /*
+            Disables minimum rep limit to post images to comments
+            */
+            waitUntil(() => app.platform.sdk.user.canuseimagesincomments)
+                .then(() => {
+                app.platform.sdk.user.canuseimagesincomments = function(e) {
+                    return true;
+                };
+            });
+
+        }
+
+        /*
+        Disables the function that mangles your images by downscaling them and converting
+        them to jpg. Images will now retain their original dimensions and format (supports
+        PNG)
+        */
+        if (getUserSetting("disableimageresize")) {
+            waitUntil(() => resize)
+                .then(() => {
+                var oldResize = resize;
+                resize = function(e, t, n, a, i) {
+                    a(e);
+                };
+            });
+        }
+
+    })
+
+    /*
+    waitUntil(() => app.platform.sdk.usersettings.meta).then(() => {
+
+    });
+    //*/
+
     window.nModuleBase = function() {
         var x = new nModuleBase.base();
 
@@ -130,6 +392,13 @@ switch to their media server which does not appear to support PNG, but it will s
         }
 
         x.renderTemplate = function(a, t, n) {
+            try {
+                if (getUserSetting("showuserblocks") && n.name === "menu" && n.data.reports.blocking.if) {
+                    delete n.data.reports.blocking.if;
+                }
+            } catch {
+            }
+
             return renderTemplate(a, t, n);
         }
 
@@ -142,6 +411,8 @@ switch to their media server which does not appear to support PNG, but it will s
                     Comment sidebar. Adds [link] to post that you can open in
                     new tab
                     */
+                    if (!getUserSetting("commentsidebarlink")) break;
+
                     e.el.find("div.lastcommentslist > div.commentgroup").each((i,el) => {
                         var shareId = el.attributes["share"].value;
                         var commentId = $(el).find("div.comment").prop("id");
@@ -153,6 +424,10 @@ switch to their media server which does not appear to support PNG, but it will s
                     Outer post template. Adds permalink anchor alement to upper-right corner
                     so that you can open in new tab or copy URL more easily
                     */
+
+                    if (!getUserSetting("showvotes")) break;
+                    //(!app.platform.sdk.usersettings.meta.showvotes.value) break;
+
                     var metaHead = e.el.find("div.metapanel");
 
                     metaHead.attr("style", "width: 1px!important");
@@ -179,6 +454,7 @@ switch to their media server which does not appear to support PNG, but it will s
                     */
                     var div = e.el.find("textarea.leaveCommentPreview");
                     div.click(el =>{
+                        if (!getUserSetting("showblockmessage")) return;
                         displayBlockMessage(e.data.receiver);
                     });
                     break;
@@ -200,15 +476,104 @@ switch to their media server which does not appear to support PNG, but it will s
     })
 
     /*
-    Disables the function that mangles your images by downscaling them and converting
-    them to jpg. Images will now retain their original dimensions and format (supports
-    PNG)
+    Removes all traces of donations from comments so that they're sorted
+    like every other comment (ie, unpins them from the top of comment
+    sections
     */
-    waitUntil(() => resize)
+    function nukeDonateComment(comment) {
+        if (comment && comment.donation === "true") {
+            delete comment.donation;
+            comment.amount = 0;
+            comment.reputation = -1000;
+            comment.scoreUp = 0;
+            comment.scoreDown = 100;
+        }
+    }
+
+    waitUntil(() => app.api.rpc)
         .then(() => {
-        var oldResize = resize;
-        resize = function(e, t, n, a, i) {
-            a(e);
+
+        /*
+        Override the rpc function with one of our own
+        */
+        var oldrpc = app.api.rpc;
+        app.api.rpc = function(n, t, r, o) {
+
+            /*
+            Execute code before the rpc method is even called
+            */
+            switch (n) {
+                    //case "getboostfeed":
+                    //break;
+                    //case "getcomments":
+                    //break;
+            }
+
+            /*
+            Calls the original rpc function and returns its promise which is
+            handled below
+            */
+            var ret = oldrpc(n, t, r, o);
+
+            var repPerDayThreshhold = parseFloat(getUserSetting("repperdaythreshhold"));
+            var upvotesPerPostThreshhold = parseFloat(getUserSetting("upvotesperpostthreshhold"));
+
+            /*
+            Handle the promise object returned from the original rpc call
+            */
+            switch (n) {
+                //case "getboostfeed":
+                    /*
+                    In case nuking the getboost() function fails above, this will
+                    ensure it doesn't return any data
+                    */
+                    //return Promise.resolve();
+                case "getcomments":
+                    return ret.then(function(e) {
+                        e.forEach(x => nukeDonateComment(x));
+                        return Promise.resolve(e);
+                    });
+                case "getprofilefeed":
+                case "gethierarchicalstrip":
+                    var dt = new Date()
+                    dt = dt.addHours(-(dt.getTimezoneOffset() / 60));
+                    return ret.then(function(e) {
+
+                        switch(n) {
+                            case "gethierarchicalstrip":
+                                var filtered = e.contents.filter(x => {
+                                    var repPerDay = 0;
+                                    var upvotesPerPost = 0;
+
+                                    ///*
+                                    var regDate = new Date(x.userprofile.regdate * 1000);
+                                    var accountAgeDays = (dt - regDate) / 1000 / 3600 / 24;
+
+                                    repPerDay = x.userprofile.reputation / accountAgeDays;
+                                    upvotesPerPost = x.userprofile.likers_count / x.userprofile.postcnt;
+                                    //*/
+
+                                    return repPerDay < repPerDayThreshhold && upvotesPerPost < upvotesPerPostThreshhold;
+                                });
+
+                                if (filtered.length === 0) {
+                                    e.contents = [e.contents[e.contents.length -1]];
+                                } else {
+                                    e.contents = filtered;
+                                }
+                                break;
+                        }
+
+                        e.contents.forEach(x => {
+                            nukeDonateComment(x.lastComment);
+                            x.s.f = "0";
+                        });
+
+                        return Promise.resolve(e);
+                    });
+                default:
+                    return ret;
+            }
         };
     });
 
