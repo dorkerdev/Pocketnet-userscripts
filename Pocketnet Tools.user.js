@@ -186,13 +186,13 @@ switch to their media server which does not appear to support PNG, but it will s
             name: "Rep per day threshhold",
             id: "repperdaythreshhold",
             type: "STRINGANY",
-            value: "20",
+            value: "",
         },
         {
             name: "Upvote per post threshold",
             id: "upvotesperpostthreshhold",
             type: "STRINGANY",
-            value: "10",
+            value: "",
         }
         //*/
     ];
@@ -515,9 +515,6 @@ switch to their media server which does not appear to support PNG, but it will s
             */
             var ret = oldrpc(n, t, r, o);
 
-            var repPerDayThreshhold = parseFloat(getUserSetting("repperdaythreshhold"));
-            var upvotesPerPostThreshhold = parseFloat(getUserSetting("upvotesperpostthreshhold"));
-
             /*
             Handle the promise object returned from the original rpc call
             */
@@ -535,12 +532,16 @@ switch to their media server which does not appear to support PNG, but it will s
                     });
                 case "getprofilefeed":
                 case "gethierarchicalstrip":
+                case "gethistoricalstrip":
                     var dt = new Date()
                     dt = dt.addHours(-(dt.getTimezoneOffset() / 60));
                     return ret.then(function(e) {
 
                         switch(n) {
                             case "gethierarchicalstrip":
+                            case "gethistoricalstrip":
+                                var repPerDayThreshhold = parseFloat(getUserSetting("repperdaythreshhold"));
+                                var upvotesPerPostThreshhold = parseFloat(getUserSetting("upvotesperpostthreshhold"));
                                 var filtered = e.contents.filter(x => {
                                     var repPerDay = 0;
                                     var upvotesPerPost = 0;
@@ -553,7 +554,8 @@ switch to their media server which does not appear to support PNG, but it will s
                                     upvotesPerPost = x.userprofile.likers_count / x.userprofile.postcnt;
                                     //*/
 
-                                    return repPerDay < repPerDayThreshhold && upvotesPerPost < upvotesPerPostThreshhold;
+                                    return (!repPerDayThreshhold || repPerDay <= repPerDayThreshhold) &&
+                                        (!upvotesPerPostThreshhold || upvotesPerPost <= upvotesPerPostThreshhold);
                                 });
 
                                 if (filtered.length === 0) {
