@@ -143,13 +143,13 @@ switch to their media server which does not appear to support PNG, but it will s
             name: "Show Post Votes",
             id: "showvotes",
             type: "BOOLEAN",
-            value: false,
+            value: true,
         },
         {
             name: "Bastyhax",
             id: "uncuck",
             type: "BOOLEAN",
-            value: true,
+            value: false,
         },
         {
             name: "Show Block Message",
@@ -167,7 +167,7 @@ switch to their media server which does not appear to support PNG, but it will s
             name: "Hide Boosted Content",
             id: "hideboost",
             type: "BOOLEAN",
-            value: true,
+            value: false,
         },
         {
             name: "Show User Block List",
@@ -183,14 +183,14 @@ switch to their media server which does not appear to support PNG, but it will s
         },
         //*
         {
-            name: "Rep per day threshhold",
-            id: "repperdaythreshhold",
+            name: "Rep per day threshold",
+            id: "repperdaythreshold",
             type: "STRINGANY",
             value: "",
         },
         {
             name: "Upvote per post threshold",
-            id: "upvotesperpostthreshhold",
+            id: "upvotesperpostthreshold",
             type: "STRINGANY",
             value: "",
         }
@@ -540,8 +540,8 @@ switch to their media server which does not appear to support PNG, but it will s
                         switch(n) {
                             case "gethierarchicalstrip":
                             case "gethistoricalstrip":
-                                var repPerDayThreshhold = parseFloat(getUserSetting("repperdaythreshhold"));
-                                var upvotesPerPostThreshhold = parseFloat(getUserSetting("upvotesperpostthreshhold"));
+                                var repPerDayThreshold = parseFloat(getUserSetting("repperdaythreshold"));
+                                var upvotesPerPostThreshold = parseFloat(getUserSetting("upvotesperpostthreshold"));
                                 var filtered = e.contents.filter(x => {
                                     var repPerDay = 0;
                                     var upvotesPerPost = 0;
@@ -554,8 +554,11 @@ switch to their media server which does not appear to support PNG, but it will s
                                     upvotesPerPost = x.userprofile.likers_count / x.userprofile.postcnt;
                                     //*/
 
-                                    return (!repPerDayThreshhold || repPerDay <= repPerDayThreshhold) &&
-                                        (!upvotesPerPostThreshhold || upvotesPerPost <= upvotesPerPostThreshhold);
+                                    var belowThresholds = (!repPerDayThreshold || repPerDay <= repPerDayThreshold) &&
+                                        (!upvotesPerPostThreshold || upvotesPerPost <= upvotesPerPostThreshold);
+
+                                    return belowThresholds ||
+                                        app.platform.sdk.users.storage[app.user.address.value].relation(x.address, "subscribes")
                                 });
 
                                 if (filtered.length === 0) {
