@@ -276,15 +276,18 @@ switch to their media server which does not appear to support PNG, but it will s
             };
         });
 
-        var noboost = getUserSetting("hideboost");
+        //var noboost = !!getUserSetting("hideboost");
 
         /*
         Disables the function that gets boosted posts, preventing them from
         being shown in the feeds
         */
-        waitUntil(() => sdk.node.shares.getboost)
-            .then(() => { sdk.node.shares.getboost = function(e, t, n) { }; }
-                 );
+
+        if (getUserSetting("hideboost")) {
+            waitUntil(() => sdk.node.shares.getboost)
+                .then(() => { sdk.node.shares.getboost = function(e, t, n) { }; }
+                     );
+        }
 
         if (getUserSetting("uncuck")) {
             /*
@@ -480,13 +483,13 @@ switch to their media server which does not appear to support PNG, but it will s
     like every other comment (ie, unpins them from the top of comment
     sections
     */
-    function nukeDonateComment(comment) {
-        if (comment && comment.donation === "true") {
+    function nukeDonateComment(comment, noboost) {
+        if (noboost && comment && comment.donation === "true") {
             delete comment.donation;
             comment.amount = 0;
-            comment.reputation = -1000;
-            comment.scoreUp = 0;
-            comment.scoreDown = 100;
+            //comment.reputation = -1000;
+            //comment.scoreUp = 0;
+            //comment.scoreDown = 100;
         }
     }
 
@@ -515,6 +518,8 @@ switch to their media server which does not appear to support PNG, but it will s
             */
             var ret = oldrpc(n, t, r, o);
 
+            var noboost = getUserSetting("hideboost");
+
             /*
             Handle the promise object returned from the original rpc call
             */
@@ -527,7 +532,7 @@ switch to their media server which does not appear to support PNG, but it will s
                     //return Promise.resolve();
                 case "getcomments":
                     return ret.then(function(e) {
-                        e.forEach(x => nukeDonateComment(x));
+                        e.forEach(x => nukeDonateComment(x, noboost));
                         return Promise.resolve(e);
                     });
                 case "getprofilefeed":
@@ -570,12 +575,23 @@ switch to their media server which does not appear to support PNG, but it will s
                         }
 
                         e.contents.forEach(x => {
-                            nukeDonateComment(x.lastComment);
+                            nukeDonateComment(x.lastComment, noboost);
                             x.s.f = "0";
                         });
 
                         return Promise.resolve(e);
                     });
+                    /*
+                case "getuserprofile":
+                    //var currentUser = app.platform.sdk.users.storage[app.user.address.value];
+                    return ret.then(users => {
+                        users.forEach(u => {
+                            if (u.address === app.user.address.value) {
+                                u.dev = true;
+                            }
+                        });
+                    });
+                    //*/
                 default:
                     return ret;
             }
