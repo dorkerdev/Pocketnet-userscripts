@@ -18,8 +18,10 @@ Description of configurables;
   - Unpins pkoin comments from tops of comment sections so that they're sorted normally like all other comments. Doesn't work for the default top comment that shows below posts as this is how the posts are pulled from the node
 - Show User Block List: Allows you to view other users' block lists just as you can your own
 - Disable Default Image Resizer/Converter: When uploading images, Bastyon's proprietary image resizer scales your image down to 1080x1080 and utterly destroys its quality, making it all crusty with compression artifacts (crustification). You can disable this and upload your image as-is. For now, Bastyon saves to imgur which supports PNG, so your PNGs will not be converted to JPG. When they switch to their media server, I don't believe PNG is supported, but you should still be able to upload high-quality images
-- Rep per day threshhold: For coping with bot attacks (currently eye bots). Hides all posts from accounts that exceed the average rep per day that you configure. Leave blank to disable. I use 20 myself
-- Upvote per post threshold: Similar to above, hides posts from accounts that exceed the average upvote per post that you configure. Leave blank to disable. I use 10 for this one
+- Thresholds - Used to hide accounts that have excessive post/vote metrics. Useful for coping with bot attacks (currently eye bots)
+  - Rep per day threshold: Hides all posts from accounts that exceed the average rep per day that you configure. Leave blank to disable. I use 20 myself
+  - Upvote per post threshold: Hides posts from accounts that exceed the average upvote per post that you configure. Leave blank to disable. I use 10 for this one
+  - Thresholds are ignored for users you follow so that they show in your feeds regardless
 
 **Note**: If the userscripts don't appear to work, try these:
 
