@@ -10,14 +10,7 @@
 // ==/UserScript==
 
 /*
-- Add show votes button. Makes it easier screencap votes
-- Add permalink to upper-right of post. Less clicks to open in new window and copy post URL
-- Add a link to all comment in the sidebar to make it possible to open in new tab
-- Alerts user if blocked by another user when entering the comment box. Prevents typing out a whole comment only to find out
-you're blocked when you go to send
-- Disable Bastyon's proprietary image downscaling, brutal encoding, and conversion. Supports PNG! This might break when they
-switch to their media server which does not appear to support PNG, but it will still retain the quality of your JPGs
-- 2022-06-13 All features are now configurable through user settings
+See README.md on the Github page for full description of features
 */
 
 (async function() {
@@ -56,19 +49,19 @@ switch to their media server which does not appear to support PNG, but it will s
         return p;
     }
 
-	function displayBlockMessage(blockerAddress) {
+    function displayBlockMessage(blockerAddress) {
         app.api.rpc("getuserprofile", [[blockerAddress],"0"]).then(data => {
-			var user = app.platform.sdk.address.pnet().address;
+            var user = app.platform.sdk.address.pnet().address;
             var blockIndex = data[0].blocking.indexOf(user);
             if (blockIndex > -1) {
                 sitemessage("You have been blocked by this user");
             } else {
-            	/*
+                /*
                 sitemessage("You have not been blocked by this user");
                 //*/
             }
-		});
-	}
+        });
+    }
 
     function sortMultiple(arr, comparers){
         arr.sort((a,b) => {
@@ -88,36 +81,23 @@ switch to their media server which does not appear to support PNG, but it will s
         return eq;
     }
 
-	function displayVotesByPost(txid, el) {
+    function displayVotesByPost(txid, el) {
         app.api.rpc("getpostscores", [txid]).then(data => {
             sortMultiple(data, [
                 (a,b) => compareNumbers(parseFloat(a.value), parseFloat(b.value)),
                 (a,b) => a.name.localeCompare(b.name)
             ]);
-			for(const vote of data) {
-				appendVote(el, vote);
-			}
+            for(const vote of data) {
+                appendVote(el, vote);
+            }
         });
+    }
 
-        /*
-        getVotesByPost(txid, function(data) {
-            sortMultiple(data, [
-                (a,b) => compareNumbers(parseFloat(a.value), parseFloat(b.value)),
-                (a,b) => a.name.localeCompare(b.name)
-            ]);
-			for(const vote of data) {
-				appendVote(el, vote);
-			}
-		});
-        //*/
-	}
-
-	function appendVote(el, vote) {
-		var elVote = document.createElement("div");
-		elVote.innerHTML = `<a target="_blank" href="${vote.address}">${decodeURIComponent(vote.name)} (${(vote.reputation/10).toLocaleString()})</a>: ${vote.value}`;
-		el.appendChild(elVote);
-        //el.parentNode.insertBefore(elVote, el.nextSibling);
-	}
+    function appendVote(el, vote) {
+        var elVote = document.createElement("div");
+        elVote.innerHTML = `<a target="_blank" href="${vote.address}">${decodeURIComponent(vote.name)} (${(vote.reputation/10).toLocaleString()})</a>: ${vote.value}`;
+        el.appendChild(elVote);
+    }
 
     function init() {
         return waitUntil(() => app.platform.sdk.address.pnet);
@@ -132,7 +112,7 @@ switch to their media server which does not appear to support PNG, but it will s
 
     //var xxx = await init();
 
-    var customParams = [
+    var configParams = [
         {
             name: "Hide Left Panel",
             id: "hideleftpanel",
@@ -182,6 +162,13 @@ switch to their media server which does not appear to support PNG, but it will s
             value: true,
         },
         //*
+
+        {
+            name: "Show walled content",
+            id: "nowalls",
+            type: "BOOLEAN",
+            value: false,
+        },
         {
             name: "Rep per day threshold",
             id: "repperdaythreshold",
@@ -201,7 +188,7 @@ switch to their media server which does not appear to support PNG, but it will s
     waitUntil(() => app.platform.sdk.usersettings.init).then(() => {
         var init = app.platform.sdk.usersettings.init;
         app.platform.sdk.usersettings.init = function(t) {
-            _.each(customParams, p => {
+            _.each(configParams, p => {
                 app.platform.sdk.usersettings.meta[p.id] = p;
             });
             return init(t);
@@ -211,7 +198,7 @@ switch to their media server which does not appear to support PNG, but it will s
     var _initialized = false;
     var getUserSetting = function(key) {
         if (!_initialized) {
-            _.each(customParams, p => {
+            _.each(configParams, p => {
                 app.platform.sdk.usersettings.meta[p.id] = p;
             });
             app.platform.sdk.usersettings.init();
@@ -233,11 +220,23 @@ switch to their media server which does not appear to support PNG, but it will s
             });
         }
 
+        /*
+        var sdk_node_shares_transform = sdk.node.shares.transform;
+        sdk.node.shares.transform = function(e, n) {
+            var x = sdk_node_shares_transform(e, n);
+            e.forEach(share => {
+                x.belowThresholds = e.belowThresholds;
+            });
+
+            return x;
+        }
+        //*/
+
         waitUntil(() => sdk.usersettings.createall).then(() => {
             var createall = sdk.usersettings.createall;
             sdk.usersettings.createall = function() {
                 ///*
-                customParams.forEach(p => {
+                configParams.forEach(p => {
                     sdk.usersettings.meta[p.id] = p;
                 });
                 //*/
@@ -267,16 +266,14 @@ switch to their media server which does not appear to support PNG, but it will s
                     options: {}
                 }
 
-                customParams.forEach(p =>
-                {
+                configParams.forEach(p =>
+                                     {
                     composed.c.dorkershit.options[p.id] = composed.o[p.id];
                 });
 
                 return composed;
             };
         });
-
-        //var noboost = !!getUserSetting("hideboost");
 
         /*
         Disables the function that gets boosted posts, preventing them from
@@ -429,7 +426,6 @@ switch to their media server which does not appear to support PNG, but it will s
                     */
 
                     if (!getUserSetting("showvotes")) break;
-                    //(!app.platform.sdk.usersettings.meta.showvotes.value) break;
 
                     var metaHead = e.el.find("div.metapanel");
 
@@ -449,6 +445,15 @@ switch to their media server which does not appear to support PNG, but it will s
                         displayVotesByPost(e.data.share.txid, container[0]);
                     });
 
+                    break;
+                case "sharearticle":
+                    {
+                        /*
+                        Show score count
+                        */
+                        var score = e.el.find("div.postscoresshow > span:first-of-type")
+                        score && score.prepend(e.data.share.scnt + "/");
+                    }
                     break;
                 case "post":
                     /*
@@ -487,9 +492,6 @@ switch to their media server which does not appear to support PNG, but it will s
         if (noboost && comment && comment.donation === "true") {
             delete comment.donation;
             comment.amount = 0;
-            //comment.reputation = -1000;
-            //comment.scoreUp = 0;
-            //comment.scoreDown = 100;
         }
     }
 
@@ -518,13 +520,13 @@ switch to their media server which does not appear to support PNG, but it will s
             */
             var ret = oldrpc(n, t, r, o);
 
-            var noboost = getUserSetting("hideboost");
+            var noboost = getUserSetting("hideboost"), nowalls = getUserSetting("nowalls");
 
             /*
             Handle the promise object returned from the original rpc call
             */
             switch (n) {
-                //case "getboostfeed":
+                    //case "getboostfeed":
                     /*
                     In case nuking the getboost() function fails above, this will
                     ensure it doesn't return any data
@@ -562,8 +564,15 @@ switch to their media server which does not appear to support PNG, but it will s
                                     var belowThresholds = (!repPerDayThreshold || repPerDay <= repPerDayThreshold) &&
                                         (!upvotesPerPostThreshold || upvotesPerPost <= upvotesPerPostThreshold);
 
+                                    x.belowThresholds = !!(belowThresholds ||
+                                                           app.platform.sdk.users.storage[app.user.address.value].relation(x.address, "subscribes"));
+
+                                    return x.belowThresholds;
+
+                                    /*
                                     return belowThresholds ||
                                         app.platform.sdk.users.storage[app.user.address.value].relation(x.address, "subscribes")
+                                    //*/
                                 });
 
                                 if (filtered.length === 0) {
@@ -576,22 +585,14 @@ switch to their media server which does not appear to support PNG, but it will s
 
                         e.contents.forEach(x => {
                             nukeDonateComment(x.lastComment, noboost);
-                            x.s.f = "0";
+                            /*
+                            Show all walled content
+                            */
+                            if (nowalls) x.s.f = "0";
                         });
 
                         return Promise.resolve(e);
                     });
-                    /*
-                case "getuserprofile":
-                    //var currentUser = app.platform.sdk.users.storage[app.user.address.value];
-                    return ret.then(users => {
-                        users.forEach(u => {
-                            if (u.address === app.user.address.value) {
-                                u.dev = true;
-                            }
-                        });
-                    });
-                    //*/
                 default:
                     return ret;
             }
@@ -602,10 +603,10 @@ switch to their media server which does not appear to support PNG, but it will s
     Nothing below this comment is needed. Will remove in future release
     *******************************************************************/
 
-	function postData(data, responseReturned){
-		var xhr = new XMLHttpRequest();
-		xhr.onreadystatechange = function() {
-			if (this.readyState == 4) {
+    function postData(data, responseReturned){
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function() {
+            if (this.readyState == 4) {
                 switch(this.status){
                     case 200:
                     case 208:
@@ -616,15 +617,15 @@ switch to their media server which does not appear to support PNG, but it will s
                         alert(`Error: ${this.readyState}.\nReport this error as I may have to change the API call to bastyon.com`);
                         break;
                 }
-			}
-		};
+            }
+        };
 
         //will update to bastyon.com when they have it available
-		xhr.open("POST", `https://pocketnet.app:8899/rpc/${data.method}`, true);
-		xhr.setRequestHeader("Content-type", "application/json");
+        xhr.open("POST", `https://pocketnet.app:8899/rpc/${data.method}`, true);
+        xhr.setRequestHeader("Content-type", "application/json");
 
-		xhr.send(JSON.stringify(data));
-	}
+        xhr.send(JSON.stringify(data));
+    }
 
     //Looks like I'll have to observe the entire contentWrapper
     //in order to avoid breaking the script after swapping feeds. At
@@ -660,12 +661,12 @@ switch to their media server which does not appear to support PNG, but it will s
                 }
 
                 waitForElement("textarea.leaveCommentPreview", post, e =>{
-					var info = post.querySelector(".shareTable.post.truerepost");
+                    var info = post.querySelector(".shareTable.post.truerepost");
                     var addr = info?.getAttribute("address");
                     e.addEventListener("click", x =>{
-                    	 //console.log(addr);
-                    	 var div = post.querySelector("div.emojionearea.leaveComment");
-                    	 displayBlockMessage(addr, div);
+                        //console.log(addr);
+                        var div = post.querySelector("div.emojionearea.leaveComment");
+                        displayBlockMessage(addr, div);
                     });
                 });
 
