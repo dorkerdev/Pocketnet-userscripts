@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Pocketnet Tools
 // @namespace    http://tampermonkey.net/
-// @version      0.7
+// @version      current
 // @description  Adds various UI enhancements to the post/content template (see top comment for details)
 // @author       dorker
 // @match        https://bastyon.com/*
@@ -136,6 +136,12 @@ See README.md on the Github page for full description of features
             id: "showblockmessage",
             type: "BOOLEAN",
             value: true,
+        },
+        {
+            name: "Show Blocked Profile Content",
+            id: "showblockedprofilecontent",
+            type: "BOOLEAN",
+            value: false,
         },
         {
             name: "Add Comment Sidebar Link",
@@ -421,11 +427,17 @@ See README.md on the Github page for full description of features
                     break;
                 case "share":
                     /*
+                    Remove blocking class so that you can still view the posts and comment
+                    sections of users you've blocked
+                    */
+                    if (getUserSetting("showblockedprofilecontent")) {
+                        e.el.removeClass("blocking");
+                    }
+
+                    /*
                     Outer post template. Adds permalink anchor alement to upper-right corner
                     so that you can open in new tab or copy URL more easily
                     */
-
-                    if (!getUserSetting("showvotes")) break;
 
                     var metaHead = e.el.find("div.metapanel");
 
@@ -433,17 +445,22 @@ See README.md on the Github page for full description of features
                     metaHead.attr("style", "textAlign: right");
                     metaHead.prepend(`<a href="post?s=${e.data.share.txid}" style="paddingRight = 10px" target="_blank">permalink<a>`);
 
-                    var panel = e.el.find("div.panel.sharepanel");
-                    var container = $("<div style=\"text-align:right\"></div>");
-                    var link = $("<input type=\"button\" value=\"Show votes\" />")
+                    /*
+                    Adds "Show votes" button
+                    */
+                    if (getUserSetting("showvotes")) {
+                        var panel = e.el.find("div.panel.sharepanel");
+                        var container = $("<div style=\"text-align:right\"></div>");
+                        var link = $("<input type=\"button\" value=\"Show votes\" />")
 
-                    container.append(link);
-                    container.insertAfter(panel);
+                        container.append(link);
+                        container.insertAfter(panel);
 
-                    link.click(() => {
-                        //e.target.disabled = true;
-                        displayVotesByPost(e.data.share.txid, container[0]);
-                    });
+                        link.click(() => {
+                            //e.target.disabled = true;
+                            displayVotesByPost(e.data.share.txid, container[0]);
+                        });
+                    }
 
                     break;
                 case "sharearticle":
