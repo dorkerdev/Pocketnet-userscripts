@@ -435,6 +435,11 @@ See README.md on the Github page for full description of features
                     }
 
                     /*
+                    Add language feed post was created in
+                    */
+                    e.el.find("div.authorTable > div.sys").append(`<span>(${e.data.share.language})</span>`)
+
+                    /*
                     Outer post template. Adds permalink anchor alement to upper-right corner
                     so that you can open in new tab or copy URL more easily
                     */
@@ -483,6 +488,37 @@ See README.md on the Github page for full description of features
                         displayBlockMessage(e.data.receiver);
                     });
                     break;
+                case "info":
+                    {
+                        if (e.data.module.map.href === "author") {
+                            let accountAge = (new Date() - e.data.author.data.regdate) / 1000 / 3600 / 24;
+                            let infos = [
+                                {
+                                    label: "Account age",
+                                    value: `${Math.trunc(accountAge)} days`
+                                },
+                                {
+                                    label: "Rep/day",
+                                    value: (e.data.author.data.reputation / accountAge).toFixed(2)
+                                },
+                                {
+                                    label: "Posts/day",
+                                    value: (e.data.author.data.postcnt / accountAge).toFixed(2)
+                                }
+                            ];
+
+                            infos.forEach(info => {
+                                //let o = infos[info];
+                                e.el.find("div.additionalinfo").append(`<div class="item">
+	<div class="itemtable table">
+		<div class="icon"><i class="fas fa-info"></i></div>
+			<div class="label">${info.label} <b>${info.value}</b>
+		</div>
+	</div>
+</div>`);
+                            });
+                        }
+                    }
             }
 
             return ret;
