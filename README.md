@@ -22,16 +22,16 @@ Uncucks things
   - Show content hidden behind subscriber/membership walls
 ##### Show Block Message 
 Shows a message alerting you that you've been blocked by a user as soon as you click into the comment box beneath their post. Prevents you from typing out a long comment only to find out you've been blocked after the fact. Doesn't yet work for comment box replies to other people's comments. **Note**: The devs will soon be implementing their own version of this. Strange that they're doing that only after I added that feature myself, huh?
-#####Show Blocked Profile Content
+##### Show Blocked Profile Content
 When you block a user, you are unable to view or interact with their content. This feature removes that restriction so that you can still stalk and interact with users you've blocked (until they block you back)
-#####Add Comment Sidebar Link
+##### Add Comment Sidebar Link
 Adds [link] to all comments in the sidebar that you can middle-click/right-click to open in new tab/window
-#####Hide Boosted Content
+##### Hide Boosted Content
   - Removes all boosted posts from the feed
   - Unpins pkoin comments from tops of comment sections so that they're sorted normally like all other comments. Doesn't work for the default top comment that shows below posts as this is how the posts are pulled from the node
-#####Show User Block List
+##### Show User Block List
 Allows you to view other users' block lists just as you can your own
-#####Disable Default Image Resizer/Converter
+##### Disable Default Image Resizer/Converter
 When uploading images, Bastyon's proprietary image resizer scales your image down to 1080x1080 and utterly destroys its quality, making it all crusty with compression artifacts. This feature allows you to disable their resize and upload your image as-is. For now, Bastyon saves to imgur which supports PNG, so this will prevent your PNGs from being converted to JPG. When they switch to their media server, I don't believe PNG is supported, but you should still be able to upload high-quality images
 ##### Show Walled Content
 Enabling this will allow you to view content that is locked behind a login or membership wall. In theory, you will also be able to rate/comment on the content, though I haven't tested that
