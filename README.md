@@ -41,9 +41,19 @@ Used to hide accounts that have excessive post/vote metrics. Useful for coping w
   - Upvote per post threshold: Hides posts from accounts that exceed the average upvote per post that you configure. Leave blank to disable. I use 10 for this one
   - Thresholds are ignored for users you follow so that they show in your feeds regardless
 
+### Other features added automatically
+
+##### Add additional stats to user profile
+![image](https://user-images.githubusercontent.com/89675012/175365467-e774b159-1d98-42de-9b40-ab992c606885.png)
+
+##### Add language feed next to post timestamp
+Useful when browsing a user's profile to see what language feeds they're posting to
+
 **Note**: If the userscripts don't appear to work, try these:
 
 - Refresh the browser. Sometimes, the userscripts don't load during the initial page load. Not sure why, but am looking into it
 - If your config options don't seem to work, go to the settings page and check/uncheck one of the options and then refresh all tabs. I made some spelling corrections to the settings keys, so the old ones could still be cached in your local storage
+
+##### Screenshot of new config page
 
 ![image](https://github.com/dorkerdev/Pocketnet-userscripts/blob/main/Pocketnet%20Tools%20settings%20screenshot.PNG)
