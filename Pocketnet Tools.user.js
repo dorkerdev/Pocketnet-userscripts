@@ -110,7 +110,8 @@ See README.md on the Github page for full description of features
         //*/
     }
 
-    //var xxx = await init();
+    //var xxx = console.log(await init());
+    //await (async function() { waitUntil(()=> true)})();
 
     var configParams = [
         {
@@ -125,6 +126,14 @@ See README.md on the Github page for full description of features
             type: "BOOLEAN",
             value: true,
         },
+        ///*
+        {
+            name: "Enable Page Titles",
+            id: "pagetitles",
+            type: "BOOLEAN",
+            value: false,
+        },
+        //*/
         {
             name: "Bastyhax",
             id: "uncuck",
@@ -186,6 +195,12 @@ See README.md on the Github page for full description of features
             id: "upvotesperpostthreshold",
             type: "STRINGANY",
             value: "",
+        },
+        {
+            name: "Feed filter",
+            id: "feedfilter",
+            type: "STRINGANY",
+            value: "",
         }
         //*/
     ];
@@ -200,11 +215,13 @@ See README.md on the Github page for full description of features
             return init(t);
         }
     });
+
     //*/
+
     var _initialized = false;
     var getUserSetting = function(key) {
         if (!_initialized) {
-            _.each(configParams, p => {
+            configParams.forEach(p => {
                 app.platform.sdk.usersettings.meta[p.id] = p;
             });
             app.platform.sdk.usersettings.init();
@@ -213,6 +230,161 @@ See README.md on the Github page for full description of features
 
         return app.platform.sdk.usersettings.meta[key].value;
     }
+
+    window.nModuleBase = function() {
+        var x = new nModuleBase.base();
+
+        var loadTemplate = x.loadTemplate;
+        var renderTemplate = x.renderTemplate;
+        var insertTemplate = x.insertTemplate;
+
+        x.loadTemplate = function(a, t) {
+            //if (a.name === "share") return null;
+            return loadTemplate(a, t);
+        }
+
+        x.renderTemplate = function(a, t, n) {
+            //console.log(n.name);
+            //if (n.name === "share") return null;
+            try {
+                if (getUserSetting("showuserblocks") && n.name === "menu" && n.data.reports.blocking.if) {
+                    delete n.data.reports.blocking.if;
+                }
+            } catch {
+            }
+
+            return renderTemplate(a, t, n);
+        }
+
+        x.insertTemplate = function(e, a) {
+            var ret = insertTemplate(e, a);
+            //console.log(e.name);
+            switch(e.name){
+                case "lastcommentslist":
+                    /*
+                    Comment sidebar. Adds [link] to post that you can open in
+                    new tab
+                    */
+                    if (!getUserSetting("commentsidebarlink")) break;
+
+                    e.el.find("div.lastcommentslist > div.commentgroup").each((i,el) => {
+                        var shareId = el.attributes["share"].value;
+                        var commentId = $(el).find("div.comment").prop("id");
+                        $(el).find("div.commentmessage").prepend(`<a target="_blank" href="post?s=${shareId}&commentid=${commentId}">[link] </a>`);
+                    });
+                    break;
+                case "share":
+                    /*
+                    Remove blocking class so that you can still view the posts and comment
+                    sections of users you've blocked
+                    */
+                    if (getUserSetting("showblockedprofilecontent")) {
+                        e.el.removeClass("blocking");
+                    }
+
+                    /*
+                    Add language feed post was created in
+                    */
+                    e.el.find("div.authorTable > div.sys").append(`<span>(${e.data.share.language})</span>`)
+
+                    /*
+                    Outer post template. Adds permalink anchor alement to upper-right corner
+                    so that you can open in new tab or copy URL more easily
+                    */
+
+                    var metaHead = e.el.find("div.metapanel");
+
+                    metaHead.attr("style", "width: 1px!important");
+                    metaHead.attr("style", "textAlign: right");
+                    metaHead.prepend(`<a href="post?s=${e.data.share.txid}" style="paddingRight = 10px" target="_blank">permalink<a>`);
+
+                    /*
+                    Adds "Show votes" button
+                    */
+                    if (getUserSetting("showvotes")) {
+                        var panel = e.el.find("div.panel.sharepanel");
+                        var container = $("<div style=\"text-align:right\"></div>");
+                        var link = $("<input type=\"button\" value=\"Show votes\" />")
+
+                        container.append(link);
+                        container.insertAfter(panel);
+
+                        link.click(() => {
+                            //e.target.disabled = true;
+                            displayVotesByPost(e.data.share.txid, container[0]);
+                        });
+                    }
+
+                    break;
+                case "sharearticle":
+                    {
+                        /*
+                        Show score count
+                        */
+                        var score = e.el.find("div.postscoresshow > span:first-of-type")
+                        score && score.prepend(e.data.share.scnt + "/");
+                    }
+                    break;
+                case "post":
+                    /*
+                    Post body and comment box. Alerts you if you've been banned by
+                    a user as soon as you click in the comment box on their post
+                    */
+                    var div = e.el.find("textarea.leaveCommentPreview");
+                    div.click(el =>{
+                        if (!getUserSetting("showblockmessage")) return;
+                        displayBlockMessage(e.data.receiver);
+                    });
+                    break;
+                case "info":
+                    {
+                        if (e.data.module.map.href === "author") {
+                            let accountAge = (new Date() - e.data.author.data.regdate) / 1000 / 3600 / 24;
+                            let infos = [
+                                {
+                                    label: "Account age",
+                                    value: `${Math.trunc(accountAge)} days`
+                                },
+                                {
+                                    label: "Rep/day",
+                                    value: (e.data.author.data.reputation / accountAge).toFixed(2)
+                                },
+                                {
+                                    label: "Posts/day",
+                                    value: (e.data.author.data.postcnt / accountAge).toFixed(2)
+                                }
+                            ];
+
+                            infos.forEach(info => {
+                                //let o = infos[info];
+                                e.el.find("div.additionalinfo").append(`<div class="item">
+	<div class="itemtable table">
+		<div class="icon"><i class="fas fa-info"></i></div>
+			<div class="label">${info.label} <b>${info.value}</b>
+		</div>
+	</div>
+</div>`);
+                            });
+                        }
+                    }
+            }
+
+            return ret;
+        }
+
+        return x;
+    }
+
+    Object.defineProperty(window, "nModule", {
+        get() {
+            return nModuleBase;
+        },
+        set(x) {
+            nModuleBase.base = x;
+        }
+    })
+
+    await waitUntil(() => app.platform.sdk.usersettings.meta);
 
     waitUntil(() => app.platform.sdk).then(sdk => {
 
@@ -381,160 +553,46 @@ See README.md on the Github page for full description of features
     })
 
     /*
-    waitUntil(() => app.platform.sdk.usersettings.meta).then(() => {
-
-    });
-    //*/
-
-    window.nModuleBase = function() {
-        var x = new nModuleBase.base();
-
-        var loadTemplate = x.loadTemplate;
-        var renderTemplate = x.renderTemplate;
-        var insertTemplate = x.insertTemplate;
-
-        x.loadTemplate = function(a, t) {
-            return loadTemplate(a, t);
-        }
-
-        x.renderTemplate = function(a, t, n) {
-            try {
-                if (getUserSetting("showuserblocks") && n.name === "menu" && n.data.reports.blocking.if) {
-                    delete n.data.reports.blocking.if;
+    Update page title during navigation and page loads
+    */
+    if (getUserSetting("pagetitles")) {
+        (function() {
+            /*
+        Need to figure out how to get the app name so that I don't
+        have to hardcode "Bastyon".
+        window.location.host.split(".")[0]
+        */
+            waitUntil(() => app.nav.api.load).then(load => {
+                app.nav.api.load = function(e) {
+                    if (e.history === true) {
+                        window.document.title = `${app.meta.fullname} - ${e.href}`;
+                    }
+                    load(e);
                 }
-            } catch {
+            });
+
+            waitUntil(() => app.nav.api.history.openCurrent).then(fn => {
+                app.nav.api.history.openCurrent = function() {
+                    window.document.title = `${app.meta.fullname} - ${history.state.href}`;
+                    fn();
+                }
+            });
+
+            var ps = window.history.pushState;
+            window.history.pushState = function() {
+                window.document.title = `${arguments[1]} - ${arguments[2]}`;
+                //window.document.title = arguments[1] + " - " + arguments[2];
+                ps.apply(history, arguments);
             }
 
-            return renderTemplate(a, t, n);
-        }
-
-        x.insertTemplate = function(e, a) {
-            var ret = insertTemplate(e, a);
-            //console.log(e.name);
-            switch(e.name){
-                case "lastcommentslist":
-                    /*
-                    Comment sidebar. Adds [link] to post that you can open in
-                    new tab
-                    */
-                    if (!getUserSetting("commentsidebarlink")) break;
-
-                    e.el.find("div.lastcommentslist > div.commentgroup").each((i,el) => {
-                        var shareId = el.attributes["share"].value;
-                        var commentId = $(el).find("div.comment").prop("id");
-                        $(el).find("div.commentmessage").prepend(`<a target="_blank" href="post?s=${shareId}&commentid=${commentId}">[link] </a>`);
-                    });
-                    break;
-                case "share":
-                    /*
-                    Remove blocking class so that you can still view the posts and comment
-                    sections of users you've blocked
-                    */
-                    if (getUserSetting("showblockedprofilecontent")) {
-                        e.el.removeClass("blocking");
-                    }
-
-                    /*
-                    Add language feed post was created in
-                    */
-                    e.el.find("div.authorTable > div.sys").append(`<span>(${e.data.share.language})</span>`)
-
-                    /*
-                    Outer post template. Adds permalink anchor alement to upper-right corner
-                    so that you can open in new tab or copy URL more easily
-                    */
-
-                    var metaHead = e.el.find("div.metapanel");
-
-                    metaHead.attr("style", "width: 1px!important");
-                    metaHead.attr("style", "textAlign: right");
-                    metaHead.prepend(`<a href="post?s=${e.data.share.txid}" style="paddingRight = 10px" target="_blank">permalink<a>`);
-
-                    /*
-                    Adds "Show votes" button
-                    */
-                    if (getUserSetting("showvotes")) {
-                        var panel = e.el.find("div.panel.sharepanel");
-                        var container = $("<div style=\"text-align:right\"></div>");
-                        var link = $("<input type=\"button\" value=\"Show votes\" />")
-
-                        container.append(link);
-                        container.insertAfter(panel);
-
-                        link.click(() => {
-                            //e.target.disabled = true;
-                            displayVotesByPost(e.data.share.txid, container[0]);
-                        });
-                    }
-
-                    break;
-                case "sharearticle":
-                    {
-                        /*
-                        Show score count
-                        */
-                        var score = e.el.find("div.postscoresshow > span:first-of-type")
-                        score && score.prepend(e.data.share.scnt + "/");
-                    }
-                    break;
-                case "post":
-                    /*
-                    Post body and comment box. Alerts you if you've been banned by
-                    a user as soon as you click in the comment box on their post
-                    */
-                    var div = e.el.find("textarea.leaveCommentPreview");
-                    div.click(el =>{
-                        if (!getUserSetting("showblockmessage")) return;
-                        displayBlockMessage(e.data.receiver);
-                    });
-                    break;
-                case "info":
-                    {
-                        if (e.data.module.map.href === "author") {
-                            let accountAge = (new Date() - e.data.author.data.regdate) / 1000 / 3600 / 24;
-                            let infos = [
-                                {
-                                    label: "Account age",
-                                    value: `${Math.trunc(accountAge)} days`
-                                },
-                                {
-                                    label: "Rep/day",
-                                    value: (e.data.author.data.reputation / accountAge).toFixed(2)
-                                },
-                                {
-                                    label: "Posts/day",
-                                    value: (e.data.author.data.postcnt / accountAge).toFixed(2)
-                                }
-                            ];
-
-                            infos.forEach(info => {
-                                //let o = infos[info];
-                                e.el.find("div.additionalinfo").append(`<div class="item">
-	<div class="itemtable table">
-		<div class="icon"><i class="fas fa-info"></i></div>
-			<div class="label">${info.label} <b>${info.value}</b>
-		</div>
-	</div>
-</div>`);
-                            });
-                        }
-                    }
+            var rs = window.history.replaceState;
+            window.history.replaceState = function() {
+                window.document.title = `${arguments[1]} - ${arguments[2]}`;
+                //window.document.title = arguments[1] + " - " + arguments[2];
+                rs.apply(history, arguments);
             }
-
-            return ret;
-        }
-
-        return x;
+        })();
     }
-
-    Object.defineProperty(window, "nModule", {
-        get() {
-            return nModuleBase;
-        },
-        set(x) {
-            nModuleBase.base = x;
-        }
-    })
 
     /*
     Removes all traces of donations from comments so that they're sorted
