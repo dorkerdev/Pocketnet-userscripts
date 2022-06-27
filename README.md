@@ -46,6 +46,66 @@ Used to hide accounts that have excessive post/vote metrics. Useful for coping w
   - Rep per day threshold: Hides all posts from accounts that exceed the average rep per day that you configure. Leave blank to disable. I use 20 myself
   - Upvote per post threshold: Hides posts from accounts that exceed the average upvote per post that you configure. Leave blank to disable. I use 10 for this one
   - Thresholds are ignored for users you follow so that they show in your feeds regardless
+#### Feed ignore list
+A comma-delimited list of user addresses to be removed from the hierarchical and historical feeds. Less nuclear than a block
+#### Feed filter expression
+You can enter any JavaScript expression to query the parameters passed in by `args`. Below is what the `args` object looks like. Expression should return `true` for posts you wish to keep in the feed. Posts that fail the check will be removed. Some examples of expressions you could use:
+
+`args.share.comments > 0` only show posts with comment count greater than 0  
+`args.share.userprofile.accountAgeDays > 10` only show posts from accounts greater than 10 days old  
+`args.share.userprofile.reputation => 100` only show posts from accounts with at least 100 rep  
+
+You can also use `&&` and `||` for binary expressions:
+
+`args.share.userprofile.repPerDay <= 20 && args.share.userprofile.upvotesPerPost <= 10`
+
+All native JavaScript functions work as well:
+
+`args.share.userprofile.name.length > 10` only show posts from accounts whose usernames are greater than 10 characters
+
+```
+"belowThresholds": [boolean],
+"today": [datetime],
+"share": {
+	"txid": [string],
+	"id": [number],
+	"address": [string],
+	"time": [number string],
+	"l": [string: language],
+	"m": [string: post body text],
+	"t": [string[]: post tags],
+	"i": [string[]: post image URLs,
+	"scoreCnt": [number string],
+	"scoreSum": [number string],
+	"reposted": [number],
+	"comments": [number],
+	"userprofile": {
+		"address": [string],
+		"id": [number],
+		"name": [string],
+		"i": [string: profile avatar URL],
+		"postcnt": [number],
+		"dltdcnt": [number],
+		"reputation": [decimal],
+		"subscribes_count": [number],
+		"subscribers_count": [number],
+		"blockings_count": [number],
+		"likers_count": [number],
+		"l": [string: language],
+		"update": [number: Unix epoch datetime in seconds],
+		"regdate": [number: Unix epoch datetime in seconds],
+		"repPerDay": [decimal],
+		"upvotesPerPost": [decimal],
+		"regDate": [datetime],
+		"accountAgeDays": [decimal],
+	}
+}
+```
+#### Debug hidden feed content
+Shows only the post stub for content that was successfully filtered from the feed, but provides a list of all checks that caused the post to fail validation
+
+![delete reasons](https://user-images.githubusercontent.com/89675012/175860649-7838253a-ccd1-400c-9205-d4489a25a849.png)
+
 
 ### Other features added automatically
 
