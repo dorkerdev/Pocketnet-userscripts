@@ -206,13 +206,13 @@ See README.md on the Github page for full description of features
         {
             name: "Feed ignore list",
             id: "feedignorelist",
-            type: "STRINGANY",
+            type: "TEXT",
             value: "",
         },
         feedFilterParam = {
             name: "Feed filter expression",
             id: "feedfilter",
-            type: "STRINGANY",
+            type: "TEXT",
             value: "",
         },
         {
@@ -636,11 +636,6 @@ See README.md on the Github page for full description of features
     */
     if (getUserSetting("pagetitles")) {
         (function() {
-            /*
-        Need to figure out how to get the app name so that I don't
-        have to hardcode "Bastyon".
-        window.location.host.split(".")[0]
-        */
             waitUntil(() => app.nav.api.load).then(load => {
                 app.nav.api.load = function(e) {
                     if (e.history === true) {
@@ -699,6 +694,20 @@ See README.md on the Github page for full description of features
     } catch (error) {
         sitemessage(`${feedFilterParam.name}: ${error.message}`);
     }
+
+    waitUntil(() => app.platform.sdk.node.transactions.create.common).then(common => {
+        var _common = app.platform.sdk.node.transactions.create.common;
+        app.platform.sdk.node.transactions.create.common = function(p) {
+            if (arguments[1] instanceof UserInfo) {
+                let aboutarr = arguments[1].about.v.split("--img:");
+                if (aboutarr.length === 2) {
+                    arguments[1].image.v = aboutarr[1];
+                    arguments[1].about.v = aboutarr[0].trim();
+                }
+            }
+            _common.apply(this, arguments)
+        }
+    });
 
     waitUntil(() => app.api.rpc)
         .then(() => {
@@ -953,43 +962,4 @@ See README.md on the Github page for full description of features
         const observer = new MutationObserver(callback);
         observer.observe(targetNode, config);
     }
-
-    /*
-    waitForElement("#main:not(.videomain) .leftpanelcell", document.body, e =>{
-        e.style.display = "none";
-    });
-
-    waitForElement("#main:not(.videomain) .lentacell", document.body, e =>{
-        e.style.marginLeft = "0px";
-    });
-    //*/
-
-    //document.querySelector("div.leftpanelcell").style.display = "None";
-    //document.querySelector("#main .lentacell").style.marginLeft = "0px";
-
-    /*
-    var shite = document.createElement("div");
-    shite.id = "shite";
-    shite.style.display = "none";
-    document.body.appendChild(shite);
-    //*/
-
-    /*
-    var oldRpc = app.api.rpc;
-    app.api.rpc = function(t,r,n) {
-
-        if (t === "getlastcomments"){
-            r[0] = "20";
-            r.xxxxxxxx = Date.now();
-        }
-
-        return oldRpc(t,r,n);
-	};
-    //*/
-
-    //var oldRpc = app.api.rpc;
-    //app.api.rpc = function(t,r,n) { console.log(t); return oldRpc(t,r,n); };
-
-    // Later, you can stop observing
-    //observer.disconnect();
 })();
