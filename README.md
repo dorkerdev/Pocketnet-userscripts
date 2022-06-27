@@ -49,11 +49,12 @@ Used to hide accounts that have excessive post/vote metrics. Useful for coping w
 #### Feed ignore list
 A comma-delimited list of user addresses to be removed from the hierarchical and historical feeds. Less nuclear than a block
 #### Feed filter expression
-You can enter any JavaScript expression to query the parameters passed in by `args`. Below is what the `args` object looks like. Expression should return `true` for posts you wish to keep in the feed. Posts that fail the check will be removed. Some examples of expressions you could use:
+You can enter any JavaScript expression to query the parameters passed in by `args`. Below is what the `args` object looks like. Expression should return `true` for posts you wish to keep in the feed. Posts that fail the check will be removed. _You can only use single quotes for strings_. Double quotes are not supported due to Bastyon's code. Some examples of expressions you could use:
 
 `args.share.comments > 0` only show posts with comment count greater than 0  
 `args.share.userprofile.accountAgeDays > 10` only show posts from accounts greater than 10 days old  
-`args.share.userprofile.reputation => 100` only show posts from accounts with at least 100 rep  
+`args.share.userprofile.l === 'en'` only show posts from users who chose English as their profile language
+`args.share.userprofile.l !== 'ru'` only show posts from users whose language is not Russian
 
 You can also use `&&` and `||` for binary expressions:
 
