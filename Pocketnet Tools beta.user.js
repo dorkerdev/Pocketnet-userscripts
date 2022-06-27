@@ -206,13 +206,13 @@ See README.md on the Github page for full description of features
         {
             name: "Feed ignore list",
             id: "feedignorelist",
-            type: "TEXT",
+            type: "STRINGANY",
             value: "",
         },
         feedFilterParam = {
             name: "Feed filter expression",
             id: "feedfilter",
-            type: "TEXT",
+            type: "STRINGANY",
             value: "",
         },
         {
@@ -455,6 +455,35 @@ See README.md on the Github page for full description of features
             pShareBase.base = x;
         }
     })
+
+    /*
+    window.UserInfoBase = function() {
+        var x = new UserInfoBase.base;
+
+        var _about = x.about.set;
+
+        x.about.set = function (e) {
+            let aboutarr = e.split("--img:");
+            if (aboutarr.length === 2) {
+                x.image.set(aboutarr[1]);
+            }
+
+            _about(aboutarr[0].trim());
+
+        }
+
+        return x;
+    }
+
+    Object.defineProperty(window, "UserInfo", {
+        get() {
+            return UserInfoBase;
+        },
+        set(x) {
+            UserInfoBase.base = x;
+        }
+    })
+    //*/
 
     /*
     window.initUploadBase = function(e) {
