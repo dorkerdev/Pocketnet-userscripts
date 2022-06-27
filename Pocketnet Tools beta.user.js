@@ -210,7 +210,7 @@ See README.md on the Github page for full description of features
             value: "",
         },
         feedFilterParam = {
-            name: "Feed filter",
+            name: "Feed filter expression",
             id: "feedfilter",
             type: "STRINGANY",
             value: "",
@@ -300,6 +300,14 @@ See README.md on the Github page for full description of features
                     });
                     break;
                 case "share":
+
+                    if (e.data.share.deleted) {
+                        let elRemove = e.el.find("div.removeDescription");
+                        elRemove.css("color","red");
+                        elRemove.append(`<ul>${Array.from(e.data.share.deleteReasons.map(x=> `<li>${x}</li>`)).join("")}</ul>`);
+                        break;
+                    }
+
                     /*
                     Remove blocking class so that you can still view the posts and comment
                     sections of users you've blocked
@@ -433,6 +441,7 @@ See README.md on the Github page for full description of features
         x._import = function(e) {
             __import(e);
             x.dorkynuke = e.dorkynuke;
+            x.deleteReasons = e.deleteReasons;
         }
 
         return x;
@@ -776,6 +785,10 @@ See README.md on the Github page for full description of features
                                         if (!args.belowThresholds || ignore || filtered) {
                                             if (debughiddenfeedcontent) {
                                                 args.share.deleted = true;
+                                                args.share.deleteReasons = [];
+                                                if (!args.belowThresholds) args.share.deleteReasons.push("Exceeded thresholds");
+                                                if (ignore) args.share.deleteReasons.push("Address ignore list");
+                                                if (filtered) args.share.deleteReasons.push(feedFilterParam.name);
                                             } else {
                                                 args.share.dorkynuke = true;
                                             }
