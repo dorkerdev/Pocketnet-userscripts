@@ -16,6 +16,11 @@ See README.md on the Github page for full description of features
 (async function() {
     'use strict';
 
+    /*
+    Waits asynchronously until a condition is true. Mainly
+    used to pause execution of code while waiting for
+    Bastyon's various UI elements to fully initialize
+    */
     function waitUntil(isTrue, interval) {
         function TryIt() {
             var ret;
@@ -113,22 +118,24 @@ See README.md on the Github page for full description of features
     //var xxx = console.log(await init());
     //await (async function() { waitUntil(()=> true)})();
 
+    var feedFilterParam;
+
     var configParams = [
         {
-            name: "Hide Left Panel",
+            name: "Hide left panel",
             id: "hideleftpanel",
             type: "BOOLEAN",
             value: false,
         },
         {
-            name: "Show Post Votes",
+            name: "Show post votes",
             id: "showvotes",
             type: "BOOLEAN",
             value: true,
         },
         ///*
         {
-            name: "Enable Page Titles",
+            name: "Enable page titles",
             id: "pagetitles",
             type: "BOOLEAN",
             value: false,
@@ -141,37 +148,37 @@ See README.md on the Github page for full description of features
             value: false,
         },
         {
-            name: "Show Block Message",
+            name: "Show block message",
             id: "showblockmessage",
             type: "BOOLEAN",
             value: true,
         },
         {
-            name: "Show Blocked Profile Content",
+            name: "Show blocked profile content",
             id: "showblockedprofilecontent",
             type: "BOOLEAN",
             value: false,
         },
         {
-            name: "Add Comment Sidebar Link",
+            name: "Add comment sidebar link",
             id: "commentsidebarlink",
             type: "BOOLEAN",
             value: true,
         },
         {
-            name: "Hide Boosted Content",
+            name: "Hide boosted content",
             id: "hideboost",
             type: "BOOLEAN",
             value: false,
         },
         {
-            name: "Show User Block List",
+            name: "Show user block list",
             id: "showuserblocks",
             type: "BOOLEAN",
             value: true,
         },
         {
-            name: "Disable Default Image Resizer/Converter",
+            name: "Disable default image resizer/converter",
             id: "disableimageresize",
             type: "BOOLEAN",
             value: true,
@@ -191,16 +198,28 @@ See README.md on the Github page for full description of features
             value: "",
         },
         {
-            name: "Upvote per post threshold",
+            name: "Upvotes per post threshold",
             id: "upvotesperpostthreshold",
             type: "STRINGANY",
             value: "",
         },
         {
+            name: "Feed ignore list",
+            id: "feedignorelist",
+            type: "STRINGANY",
+            value: "",
+        },
+        feedFilterParam = {
             name: "Feed filter",
             id: "feedfilter",
             type: "STRINGANY",
             value: "",
+        },
+        {
+            name: "Debug hidden feed content",
+            id: "debughiddenfeedcontent",
+            type: "BOOLEAN",
+            value: true,
         }
         //*/
     ];
@@ -251,6 +270,13 @@ See README.md on the Github page for full description of features
                     delete n.data.reports.blocking.if;
                 }
             } catch {
+            }
+
+            switch(n.name) {
+                case "groupshares":
+                    n.data.shares = n.data.shares.filter(x=> !x.dorkynuke);
+                    //if (!!n.data.share.dorkynuke) return "";
+                    break;
             }
 
             return renderTemplate(a, t, n);
@@ -339,19 +365,24 @@ See README.md on the Github page for full description of features
                 case "info":
                     {
                         if (e.data.module.map.href === "author") {
-                            let accountAge = (new Date() - e.data.author.data.regdate) / 1000 / 3600 / 24;
+                            let author = e.data.author.data;
+                            let accountAge = (new Date() - author.regdate) / 1000 / 3600 / 24;
                             let infos = [
+                                {
+                                    label: "Language",
+                                    value: author.language
+                                },
                                 {
                                     label: "Account age",
                                     value: `${Math.trunc(accountAge)} days`
                                 },
                                 {
                                     label: "Rep/day",
-                                    value: (e.data.author.data.reputation / accountAge).toFixed(2)
+                                    value: (author.reputation / accountAge).toFixed(2)
                                 },
                                 {
                                     label: "Posts/day",
-                                    value: (e.data.author.data.postcnt / accountAge).toFixed(2)
+                                    value: (author.postcnt / accountAge).toFixed(2)
                                 }
                             ];
 
@@ -375,6 +406,13 @@ See README.md on the Github page for full description of features
         return x;
     }
 
+    /*
+    It is critical that this run before any other code to ensure that
+    the nModule class can be wrapped before it is defined in Bastyon's
+    code. Otherwise, we won't be able to intercept new instances of
+    the class which will prevent being able to wrap its functions as
+    shown above with nModuleBase.
+    */
     Object.defineProperty(window, "nModule", {
         get() {
             return nModuleBase;
@@ -384,6 +422,50 @@ See README.md on the Github page for full description of features
         }
     })
 
+    /*
+    Wrap the pShare class so we can carry over the filter properties
+    that were set in the RPC function
+    */
+    window.pShareBase = function() {
+        var x = new pShareBase.base;
+
+        var __import = x._import;
+        x._import = function(e) {
+            __import(e);
+            x.dorkynuke = e.dorkynuke;
+        }
+
+        return x;
+    }
+
+    Object.defineProperty(window, "pShare", {
+        get() {
+            return pShareBase;
+        },
+        set(x) {
+            pShareBase.base = x;
+        }
+    })
+
+    /*
+    window.initUploadBase = function(e) {
+        var x = new initUploadBase.base(e);
+    }
+
+    Object.defineProperty(window, "initUpload", {
+        get() {
+            return initUploadBase;
+        },
+        set(x) {
+            initUploadBase.base = x;
+        }
+    })
+    //*/
+
+    /*
+    Defer execution of this script while we wait for the .meta property to
+    be defined. This will ensure that the new config settings will work
+    */
     await waitUntil(() => app.platform.sdk.usersettings.meta);
 
     waitUntil(() => app.platform.sdk).then(sdk => {
@@ -397,18 +479,6 @@ See README.md on the Github page for full description of features
                 sheet.insertRule("#main:not(.videomain) .lentacell { margin-left: 0 }",0);
             });
         }
-
-        /*
-        var sdk_node_shares_transform = sdk.node.shares.transform;
-        sdk.node.shares.transform = function(e, n) {
-            var x = sdk_node_shares_transform(e, n);
-            e.forEach(share => {
-                x.belowThresholds = e.belowThresholds;
-            });
-
-            return x;
-        }
-        //*/
 
         waitUntil(() => sdk.usersettings.createall).then(() => {
             var createall = sdk.usersettings.createall;
@@ -606,6 +676,21 @@ See README.md on the Github page for full description of features
         }
     }
 
+    var noboost = getUserSetting("hideboost"), nowalls = getUserSetting("nowalls"),
+        debughiddenfeedcontent = !!getUserSetting("debughiddenfeedcontent");
+    var feedIgnoreList = (getUserSetting("feedignorelist") || "").split(",");
+    var feedFilterExpression = getUserSetting("feedfilter");
+    var repPerDayThreshold = parseFloat(getUserSetting("repperdaythreshold"));
+    var upvotesPerPostThreshold = parseFloat(getUserSetting("upvotesperpostthreshold"));
+
+    var feedFilter;
+
+    try {
+        feedFilter = new Function(["args"], `return ${feedFilterExpression || "true"};`);
+    } catch (error) {
+        sitemessage(`${feedFilterParam.name}: ${error.message}`);
+    }
+
     waitUntil(() => app.api.rpc)
         .then(() => {
 
@@ -630,8 +715,6 @@ See README.md on the Github page for full description of features
             handled below
             */
             var ret = oldrpc(n, t, r, o);
-
-            var noboost = getUserSetting("hideboost"), nowalls = getUserSetting("nowalls");
 
             /*
             Handle the promise object returned from the original rpc call
@@ -658,48 +741,60 @@ See README.md on the Github page for full description of features
                         switch(n) {
                             case "gethierarchicalstrip":
                             case "gethistoricalstrip":
-                                var repPerDayThreshold = parseFloat(getUserSetting("repperdaythreshold"));
-                                var upvotesPerPostThreshold = parseFloat(getUserSetting("upvotesperpostthreshold"));
-                                var filtered = e.contents.filter(x => {
-                                    var repPerDay = 0;
-                                    var upvotesPerPost = 0;
+                                e.contents.forEach(share => {
+                                //for(var i = 0; i < e.contents.length; i++) {
+                                    if (!app.platform.sdk.users.storage[app.user.address.value]
+                                        .relation(share.address, "subscribes") || feedfilter){
 
-                                    ///*
-                                    var regDate = new Date(x.userprofile.regdate * 1000);
-                                    var accountAgeDays = (dt - regDate) / 1000 / 3600 / 24;
+                                        var args = {
+                                            share: share,
+                                            repPerDay: 0,
+                                            upvotesPerPost: 0,
+                                        };
 
-                                    repPerDay = x.userprofile.reputation / accountAgeDays;
-                                    upvotesPerPost = x.userprofile.likers_count / x.userprofile.postcnt;
-                                    //*/
+                                        ///*
+                                        args.regDate = new Date(args.share.userprofile.regdate * 1000);
+                                        args.accountAgeDays = (dt - args.regDate) / 1000 / 3600 / 24;
 
-                                    var belowThresholds = (!repPerDayThreshold || repPerDay <= repPerDayThreshold) &&
-                                        (!upvotesPerPostThreshold || upvotesPerPost <= upvotesPerPostThreshold);
+                                        args.repPerDay = args.share.userprofile.reputation / args.accountAgeDays;
+                                        args.upvotesPerPost = args.share.userprofile.likers_count / args.share.userprofile.postcnt;
+                                        //*/
 
-                                    x.belowThresholds = !!(belowThresholds ||
-                                                           app.platform.sdk.users.storage[app.user.address.value].relation(x.address, "subscribes"));
+                                        args.belowThresholds = (!repPerDayThreshold || args.repPerDay <= repPerDayThreshold) &&
+                                            (!upvotesPerPostThreshold || args.upvotesPerPost <= upvotesPerPostThreshold);
 
-                                    return x.belowThresholds;
+                                        var ignore = !!feedIgnoreList.includes(args.share.address);
 
-                                    /*
-                                    return belowThresholds ||
-                                        app.platform.sdk.users.storage[app.user.address.value].relation(x.address, "subscribes")
-                                    //*/
+                                        var filtered;
+
+                                        try {
+                                            filtered = !feedFilter(args);
+                                        } catch (error) {
+                                            sitemessage(`${feedFilterParam.name}: ${error.message}`);
+                                        }
+
+                                        if (!args.belowThresholds || ignore || filtered) {
+                                            if (debughiddenfeedcontent) {
+                                                args.share.deleted = true;
+                                            } else {
+                                                args.share.dorkynuke = true;
+                                            }
+                                        }
+                                    }
                                 });
 
-                                if (filtered.length === 0) {
-                                    e.contents = [e.contents[e.contents.length -1]];
-                                } else {
-                                    e.contents = filtered;
-                                }
                                 break;
                         }
+
+                        //return Promise.resolve(e);
 
                         e.contents.forEach(x => {
                             nukeDonateComment(x.lastComment, noboost);
                             /*
                             Show all walled content
+                            2022-06-25 - autoshow walled content if user is not logged in
                             */
-                            if (nowalls) x.s.f = "0";
+                            if (nowalls || !app.user.address.value) x.s.f = "0";
                         });
 
                         return Promise.resolve(e);
