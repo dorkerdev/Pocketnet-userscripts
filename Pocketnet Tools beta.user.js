@@ -757,22 +757,27 @@ See README.md on the Github page for full description of features
 
                                         var args = {
                                             share: share,
-                                            repPerDay: 0,
-                                            upvotesPerPost: 0,
+                                            user: share.userprofile,
+                                            today: dt
                                         };
 
-                                        ///*
-                                        args.regDate = new Date(args.share.userprofile.regdate * 1000);
-                                        args.accountAgeDays = (dt - args.regDate) / 1000 / 3600 / 24;
+                                        var user = share.userprofile;
 
-                                        args.repPerDay = args.share.userprofile.reputation / args.accountAgeDays;
-                                        args.upvotesPerPost = args.share.userprofile.likers_count / args.share.userprofile.postcnt;
+                                        user.repPerDay = 0;
+                                        user.upvotesPerPost = 0;
+
+                                        ///*
+                                        user.regDateTime = new Date(user.regdate * 1000);
+                                        user.accountAgeDays = (dt - user.regDateTime) / 1000 / 3600 / 24;
+
+                                        user.repPerDay = user.reputation / user.accountAgeDays;
+                                        user.upvotesPerPost = user.likers_count / user.postcnt;
                                         //*/
 
-                                        args.belowThresholds = (!repPerDayThreshold || args.repPerDay <= repPerDayThreshold) &&
-                                            (!upvotesPerPostThreshold || args.upvotesPerPost <= upvotesPerPostThreshold);
+                                        args.belowThresholds = (!repPerDayThreshold || user.repPerDay <= repPerDayThreshold) &&
+                                            (!upvotesPerPostThreshold || user.upvotesPerPost <= upvotesPerPostThreshold);
 
-                                        var ignore = !!feedIgnoreList.includes(args.share.address);
+                                        var ignore = !!feedIgnoreList.includes(share.address);
 
                                         var filtered;
 
