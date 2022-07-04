@@ -72,28 +72,29 @@ You can also use `&&` and `||` operators:
 
 `args.share.userprofile.stats.repPerDay <= 20 && args.share.userprofile.stats.upvotesPerPost <= 10`
 
-All native JavaScript functions work as well:
-
-`args.share.userprofile.name.length > 10` only show posts from accounts whose usernames are greater than 10 characters
-
-You can also write your expression like this which rejects all posts that are articles, where the user's profile language is not English, and where reputation is <= 25:
+You can also write your expression like this which rejects all posts that are articles when you're not viewing the article feed, where the user's profile language is not English, or where reputation is <= 25:
 
 ```
 (() => {
-	var s = args.share, u = s.userprofile;
+	var a = args, s = a.share, u = s.userprofile;
 	return !(
-		s.type === 'article' ||
+		!a.rpcParams.feedFilter.includes('article') && s.type === 'article' ||
 		u.l !== 'en' ||
 		u.reputation <= 25
 	)
 })()
 ```
 
+Note the use of `feedFilter.includes('article')` in the above example which demonstrates how native JavaScript functions work as well.
+
 This is what the full `args` object looks like:
 
 ```
 "belowThresholds": [boolean],
 "today": [datetime],
+"rpcParams": {
+	feedFilter: [string[]:rpc feed filter]
+},
 "share": {
 	"txid": [string],
 	"id": [number],
