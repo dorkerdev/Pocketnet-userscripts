@@ -78,7 +78,7 @@ You can also write your expression like this which rejects all posts that are ar
 (() => {
 	var a = args, s = a.share, u = s.userprofile;
 	return !(
-		!a.rpcParams.feedFilter.includes('article') && s.type === 'article' ||
+		(!a.rpcParams.feedFilter.includes('article') && s.type === 'article') ||
 		u.l !== 'en' ||
 		u.reputation <= 25
 	)
