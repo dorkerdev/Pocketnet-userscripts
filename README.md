@@ -44,6 +44,13 @@ Allows you to view other users' block lists just as you can your own
 When uploading images, Bastyon's proprietary image resizer scales your image down to 1080x1080 and utterly destroys its quality, making it all crusty with compression artifacts. This feature allows you to disable their resize and upload your image as-is. For now, Bastyon saves to imgur which supports PNG, so this will prevent your PNGs from being converted to JPG. When they switch to their media server, I don't believe PNG is supported, but you should still be able to upload high-quality images
 #### Show additional user stats
 Enable to display additional user stats in the header of all posts and  in the user profile sidebar
+
+![pn user stats feed](https://user-images.githubusercontent.com/89675012/177215012-fc8a8199-b5e9-45cf-b822-46b3c273f071.PNG)  
+<sup>User stats in post header</sup>
+
+![pn user stats profile](https://user-images.githubusercontent.com/89675012/177215013-fd8bcf1a-8f7e-4789-9c0e-8da976b1c03e.PNG)  
+<sup>User stats in profile sidebar</sup>
+
 #### Show Walled Content
 Enabling this will allow you to view content that is locked behind a login or membership wall. In theory, you will also be able to rate/comment on the content, though I haven't tested that
 #### Thresholds 
