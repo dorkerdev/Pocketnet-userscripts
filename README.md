@@ -80,8 +80,7 @@ You can also write your expression like this which rejects all posts that are ar
 
 ```
 (() => {
-	s = args.share,
-	u = s.userprofile;
+	var s = args.share, u = s.userprofile;
 	return !(
 		s.type === 'article' ||
 		u.l !== 'en' ||
