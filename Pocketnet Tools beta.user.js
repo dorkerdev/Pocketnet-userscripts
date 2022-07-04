@@ -384,56 +384,60 @@ See README.md on the Github page for full description of features
                             e.el.removeClass("blocking");
                         }
 
-                        if (getUserSetting("userstats")) {
-                            var header = e.el.find("div.authorTable > div.sys");
+                        switch(e.name) {
+                            case "sharearticle":
+                                /*
+                                Show score count
+                                */
+                                var score = e.el.find("div.postscoresshow > span:first-of-type")
+                                score && score.prepend(e.data.share.scnt + "/");
+                                break;
+                            case "share":
+                                if (getUserSetting("userstats")) {
+                                    var header = e.el.find("div.authorTable > div.sys");
 
-                            function addMetadata(label, value) {
-                                header.append(`<div><span>${label}: ${value};</span></div>`)
-                            }
+                                    function addMetadata(label, value) {
+                                        header.append(`<div><span>${label}: ${value};</span></div>`)
+                                    }
 
-                            addMetadata("Feed", e.data.share.language);
+                                    addMetadata("Feed", e.data.share.language);
 
-                            var stats = getUserStats(e.data.share.userprofile);
+                                    var stats = getUserStats(e.data.share.userprofile);
 
-                            stats.forEach(x=> addMetadata(x.label, x.value));
+                                    stats.forEach(x=> addMetadata(x.label, x.value));
+                                }
+
+                                /*
+                                Outer post template. Adds permalink anchor alement to upper-right corner
+                                so that you can open in new tab or copy URL more easily
+                                */
+
+                                var metaHead = e.el.find("div.metapanel");
+
+                                metaHead.attr("style", "width: 1px!important");
+                                metaHead.attr("style", "textAlign: right");
+                                metaHead.prepend(`<a href="post?s=${e.data.share.txid}" style="paddingRight = 10px" target="_blank">permalink<a>`);
+
+                                /*
+                                Adds "Show votes" button
+                                */
+                                if (getUserSetting("showvotes")) {
+                                    var panel = e.el.find("div.panel.sharepanel");
+                                    var container = $("<div style=\"text-align:right\"></div>");
+                                    var link = $("<input type=\"button\" value=\"Show votes\" />")
+
+                                    container.append(link);
+                                    container.insertAfter(panel);
+
+                                    link.click(() => {
+                                        //e.target.disabled = true;
+                                        displayVotesByPost(e.data.share.txid, container[0]);
+                                    });
+                                }
+                                break;
                         }
 
-                        /*
-                        Outer post template. Adds permalink anchor alement to upper-right corner
-                        so that you can open in new tab or copy URL more easily
-                        */
 
-                        var metaHead = e.el.find("div.metapanel");
-
-                        metaHead.attr("style", "width: 1px!important");
-                        metaHead.attr("style", "textAlign: right");
-                        metaHead.prepend(`<a href="post?s=${e.data.share.txid}" style="paddingRight = 10px" target="_blank">permalink<a>`);
-
-                        /*
-                        Adds "Show votes" button
-                        */
-                        if (getUserSetting("showvotes")) {
-                            var panel = e.el.find("div.panel.sharepanel");
-                            var container = $("<div style=\"text-align:right\"></div>");
-                            var link = $("<input type=\"button\" value=\"Show votes\" />")
-
-                            container.append(link);
-                            container.insertAfter(panel);
-
-                            link.click(() => {
-                                //e.target.disabled = true;
-                                displayVotesByPost(e.data.share.txid, container[0]);
-                            });
-                        }
-                    }
-                    break;
-                case "sharearticle":
-                    {
-                        /*
-                        Show score count
-                        */
-                        var score = e.el.find("div.postscoresshow > span:first-of-type")
-                        score && score.prepend(e.data.share.scnt + "/");
                     }
                     break;
                 case "stars":
@@ -963,6 +967,9 @@ See README.md on the Github page for full description of features
                                         .relation(share.address, "subscribes") || feedfilter){
 
                                         var args = {
+                                            rpcParams: {
+                                                feedFilter: t[5]
+                                            },
                                             share: share,
                                             user: share.userprofile,
                                             today: dt
@@ -1018,6 +1025,12 @@ See README.md on the Github page for full description of features
             }
         };
     });
+
+    //utilities
+    function arrayIncludes(arr, value) {
+        return arr && arr.includes(value);
+    }
+
 
     /*******************************************************************
     Nothing below this comment is needed. Will remove in future release
