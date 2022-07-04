@@ -35,10 +35,15 @@ Adds [link] to all comments in the sidebar that you can middle-click/right-click
 #### Hide Boosted Content
   - Removes all boosted posts from the feed
   - Unpins pkoin comments from tops of comment sections so that they're sorted normally like all other comments. Doesn't work for the default top comment that shows below posts as this is how the posts are pulled from the node
+
+![no boost](https://user-images.githubusercontent.com/89675012/177214035-1a743547-ef84-4f07-99ab-6b146eab553e.png)
+
 #### Show User Block List
 Allows you to view other users' block lists just as you can your own
 #### Disable Default Image Resizer/Converter
 When uploading images, Bastyon's proprietary image resizer scales your image down to 1080x1080 and utterly destroys its quality, making it all crusty with compression artifacts. This feature allows you to disable their resize and upload your image as-is. For now, Bastyon saves to imgur which supports PNG, so this will prevent your PNGs from being converted to JPG. When they switch to their media server, I don't believe PNG is supported, but you should still be able to upload high-quality images
+#### Show additional user stats
+Enable to display additional user stats in the header of all posts and  in the user profile sidebar
 #### Show Walled Content
 Enabling this will allow you to view content that is locked behind a login or membership wall. In theory, you will also be able to rate/comment on the content, though I haven't tested that
 #### Thresholds 
@@ -52,17 +57,33 @@ A comma-delimited list of user addresses to be removed from the hierarchical and
 You can enter any JavaScript expression to query the parameters passed in by `args`. Below is what the `args` object looks like. Expression should return `true` for posts you wish to keep in the feed. Posts that fail the check will be removed. _You can only use single quotes for strings_. Double quotes are not supported due to Bastyon's code. Some examples of expressions you could use:
 
 `args.share.comments > 0` only show posts with comment count greater than 0  
-`args.share.userprofile.accountAgeDays > 10` only show posts from accounts greater than 10 days old  
+`args.share.userprofile.stats.accountAgeDays > 10` only show posts from accounts greater than 10 days old  
 `args.share.userprofile.l === 'en'` only show posts from users who chose English as their profile language
 `args.share.userprofile.l !== 'ru'` only show posts from users whose language is not Russian
 
-You can also use `&&` and `||` for binary expressions:
+You can also use `&&` and `||` operators:
 
-`args.share.userprofile.repPerDay <= 20 && args.share.userprofile.upvotesPerPost <= 10`
+`args.share.userprofile.stats.repPerDay <= 20 && args.share.userprofile.stats.upvotesPerPost <= 10`
 
 All native JavaScript functions work as well:
 
 `args.share.userprofile.name.length > 10` only show posts from accounts whose usernames are greater than 10 characters
+
+You can also write your expression like this which rejects all posts that are articles, where the user's profile language is not English, and where reputation is <= 25:
+
+```
+(() => {
+	s = args.share,
+	u = s.userprofile;
+	return !(
+		s.type === 'article' ||
+		u.l !== 'en' ||
+		u.reputation <= 25
+	)
+})()
+```
+
+This is what the full `args` object looks like:
 
 ```
 "belowThresholds": [boolean],
@@ -95,10 +116,13 @@ All native JavaScript functions work as well:
 		"l": [string: language],
 		"update": [number: Unix epoch datetime in seconds],
 		"regdate": [number: Unix epoch datetime in seconds],
-		"repPerDay": [decimal],
-		"upvotesPerPost": [decimal],
-		"regDate": [datetime],
-		"accountAgeDays": [decimal],
+		"stats": {
+			"repPerDay": [decimal],
+			"upvotesPerPost": [decimal],
+			"regDateTime": [datetime],
+			"accountAgeDays": [decimal],
+			"postsPerDay": [decimal]
+		}
 	}
 }
 ```
@@ -107,19 +131,10 @@ Shows only the post stub for content that was successfully filtered from the fee
 
 ![delete reasons](https://user-images.githubusercontent.com/89675012/175860649-7838253a-ccd1-400c-9205-d4489a25a849.png)
 
-
-### Other features added automatically
-
-#### Add additional stats to user profile
-![image](https://user-images.githubusercontent.com/89675012/175365467-e774b159-1d98-42de-9b40-ab992c606885.png)
-
-#### Add language feed next to post timestamp
-Useful when browsing a user's profile to see what language feeds they're posting to
-
 **Note**: If the userscripts don't appear to work, try these:
 
-- Refresh the browser. Sometimes, the userscripts don't load during the initial page load. Not sure why, but am looking into it
-- If your config options don't seem to work, go to the settings page and check/uncheck one of the options and then refresh all tabs. I made some spelling corrections to the settings keys, so the old ones could still be cached in your local storage
+- Refresh the browser. Sometimes, the Bastyon page will load before your userscript extension initializes during your browser's first run
+- If your config options don't seem to work, go to the settings page and check/uncheck options in question and then refresh all tabs. I could have made some changes to the settings' keys, so the old ones could still be cached in your local storage
 
 #### Screenshot of new config page
 
