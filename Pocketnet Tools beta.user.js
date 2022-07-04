@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Pocketnet Tools
 // @namespace    http://tampermonkey.net/
-// @version      current
+// @version      20
 // @description  Adds various UI enhancements to the post/content template (see top comment for details)
 // @author       dorker
 // @match        https://bastyon.com/*
@@ -66,6 +66,15 @@ See README.md on the Github page for full description of features
                 //*/
             }
         });
+    }
+
+    function userBlockedBy(blockerAddress) {
+        return new Promise((res, rej) => app.api.rpc("getuserprofile", [[blockerAddress],"0"]).then(data => {
+            var user = app.platform.sdk.address.pnet().address;
+            var blockIndex = data[0].blocking.indexOf(user);
+            var blocked = blockIndex > -1;
+            res(blocked);
+        }));
     }
 
     function sortMultiple(arr, comparers){
@@ -184,7 +193,12 @@ See README.md on the Github page for full description of features
             value: true,
         },
         //*
-
+        {
+            name: "Show additional user stats",
+            id: "userstats",
+            type: "BOOLEAN",
+            value: false,
+        },
         {
             name: "Show walled content",
             id: "nowalls",
@@ -286,6 +300,26 @@ See README.md on the Github page for full description of features
             var ret = insertTemplate(e, a);
             //console.log(e.name);
             switch(e.name){
+                case "index":
+                    switch(e.id){
+                        case "menu":
+                            {
+                                /*
+                                Turn site logo into a clickable link
+                                works only in debug mode. something else must be overwriting
+                                the changes after this executes. Disabled for now
+                                */
+                                /*
+                                let logo = e.el.find("img.header_logo");
+                                let logoParent = logo.parent();
+                                let link = $("<a href='index'></a>");
+                                logoParent.append(link);
+                                link.append(logo.detach());
+                                //*/
+                            }
+                            break;
+                    }
+                    break;
                 case "lastcommentslist":
                     /*
                     Comment sidebar. Adds [link] to post that you can open in
@@ -300,55 +334,98 @@ See README.md on the Github page for full description of features
                     });
                     break;
                 case "share":
+                case "sharearticle":
+                    {
+                        if (e.data.share.deleted) {
+                            var clone = { share: e.data.share };
+                            clone.userprofile = clone.share.userprofile;
+                            delete clone.share.userprofile;
 
-                    if (e.data.share.deleted) {
-                        let elRemove = e.el.find("div.removeDescription");
-                        elRemove.css("color","red");
-                        elRemove.append(`<ul>${Array.from(e.data.share.deleteReasons.map(x=> `<li>${x}</li>`)).join("")}</ul>`);
-                        break;
+                            var htmlReasons = `<div>Content removed by userscript</div><ul>${Array.from(e.data.share.deleteReasons.map(x=> `<li>${x}</li>`)).join("")}</ul>`;
+                            var elInfo = $(`<div style='height: 200px;overflow-wrap: break-word; overflow-y: hidden'></div>`);
+
+                            elInfo.click(e => {
+                                var height = e.currentTarget.style.height;
+                                if (height) {
+                                    e.currentTarget.style.height = '';
+                                    $(e.currentTarget).off(e.type);
+                                }
+                            });
+
+                            for(var prop1 in clone) {
+                                for(var prop2 in clone[prop1]){
+                                    var val = clone[prop1][prop2];
+                                    switch(typeof val) {
+                                        case "object":
+                                        case "function":
+                                            break;
+                                        default:
+                                            elInfo.append(`<div><strong>${prop1}.${prop2}</strong>: ${clone[prop1][prop2]}</div>`);
+                                            break;
+                                    }
+
+                                }
+                            }
+
+                            var elWrapper = $(`<div style='margin: 15px'><div style='color: red;'>${htmlReasons}</div></div>`);
+
+                            elWrapper.append(elInfo);
+                            e.el.empty();
+                            e.el.append(elWrapper);
+
+                            break;
+                        }
+
+                        /*
+                        Remove blocking class so that you can still view the posts and comment
+                        sections of users you've blocked
+                        */
+                        if (getUserSetting("showblockedprofilecontent")) {
+                            e.el.removeClass("blocking");
+                        }
+
+                        if (getUserSetting("userstats")) {
+                            var header = e.el.find("div.authorTable > div.sys");
+
+                            function addMetadata(label, value) {
+                                header.append(`<div><span>${label}: ${value};</span></div>`)
+                            }
+
+                            addMetadata("Feed", e.data.share.language);
+
+                            var stats = getUserStats(e.data.share.userprofile);
+
+                            stats.forEach(x=> addMetadata(x.label, x.value));
+                        }
+
+                        /*
+                        Outer post template. Adds permalink anchor alement to upper-right corner
+                        so that you can open in new tab or copy URL more easily
+                        */
+
+                        var metaHead = e.el.find("div.metapanel");
+
+                        metaHead.attr("style", "width: 1px!important");
+                        metaHead.attr("style", "textAlign: right");
+                        metaHead.prepend(`<a href="post?s=${e.data.share.txid}" style="paddingRight = 10px" target="_blank">permalink<a>`);
+
+                        /*
+                        Adds "Show votes" button
+                        */
+                        if (getUserSetting("showvotes")) {
+                            var panel = e.el.find("div.panel.sharepanel");
+                            var container = $("<div style=\"text-align:right\"></div>");
+                            var link = $("<input type=\"button\" value=\"Show votes\" />")
+
+                            container.append(link);
+                            container.insertAfter(panel);
+
+                            link.click(() => {
+                                //e.target.disabled = true;
+                                displayVotesByPost(e.data.share.txid, container[0]);
+                            });
+                        }
                     }
-
-                    /*
-                    Remove blocking class so that you can still view the posts and comment
-                    sections of users you've blocked
-                    */
-                    if (getUserSetting("showblockedprofilecontent")) {
-                        e.el.removeClass("blocking");
-                    }
-
-                    /*
-                    Add language feed post was created in
-                    */
-                    e.el.find("div.authorTable > div.sys").append(`<span>(${e.data.share.language})</span>`)
-
-                    /*
-                    Outer post template. Adds permalink anchor alement to upper-right corner
-                    so that you can open in new tab or copy URL more easily
-                    */
-
-                    var metaHead = e.el.find("div.metapanel");
-
-                    metaHead.attr("style", "width: 1px!important");
-                    metaHead.attr("style", "textAlign: right");
-                    metaHead.prepend(`<a href="post?s=${e.data.share.txid}" style="paddingRight = 10px" target="_blank">permalink<a>`);
-
-                    /*
-                    Adds "Show votes" button
-                    */
-                    if (getUserSetting("showvotes")) {
-                        var panel = e.el.find("div.panel.sharepanel");
-                        var container = $("<div style=\"text-align:right\"></div>");
-                        var link = $("<input type=\"button\" value=\"Show votes\" />")
-
-                        container.append(link);
-                        container.insertAfter(panel);
-
-                        link.click(() => {
-                            //e.target.disabled = true;
-                            displayVotesByPost(e.data.share.txid, container[0]);
-                        });
-                    }
-
                     break;
                 case "sharearticle":
                     {
@@ -358,6 +435,9 @@ See README.md on the Github page for full description of features
                         var score = e.el.find("div.postscoresshow > span:first-of-type")
                         score && score.prepend(e.data.share.scnt + "/");
                     }
+                    break;
+                case "stars":
+
                     break;
                 case "post":
                     /*
@@ -374,25 +454,9 @@ See README.md on the Github page for full description of features
                     {
                         if (e.data.module.map.href === "author") {
                             let author = e.data.author.data;
-                            let accountAge = (new Date() - author.regdate) / 1000 / 3600 / 24;
-                            let infos = [
-                                {
-                                    label: "Language",
-                                    value: author.language
-                                },
-                                {
-                                    label: "Account age",
-                                    value: `${Math.trunc(accountAge)} days`
-                                },
-                                {
-                                    label: "Rep/day",
-                                    value: (author.reputation / accountAge).toFixed(2)
-                                },
-                                {
-                                    label: "Posts/day",
-                                    value: (author.postcnt / accountAge).toFixed(2)
-                                }
-                            ];
+                            setUserStats(author, new Date());
+
+                            var infos = getUserStats(author);
 
                             infos.forEach(info => {
                                 //let o = infos[info];
@@ -431,6 +495,41 @@ See README.md on the Github page for full description of features
     })
 
     /*
+    Override the global event dispatcher so that we can intercept events
+    to add additional functionality. Disabled for now
+    */
+    !!0 && waitUntil(() => jQuery.event.dispatch).then(function(e) {
+        var _event = jQuery.event.dispatch;
+
+        //jQuery.event.add = function( elem, types, handler, data, selector ) {
+        jQuery.event.dispatch = function( nativeEvent ) {
+            var elem = nativeEvent.srcElement;
+
+            function eventMatches(sel, events) {
+                var match = elem && elem.matches(sel) &&
+                    nativeEvent.type === events;
+                try {
+                    //var log = "EVENT: " + elem.classList + " " + nativeEvent.type;
+                    //console.log(log);
+                    //console.log(elem);
+                    return match;
+                } catch(error) {
+                    console.log(error);
+                }
+            }
+
+            function wrapHandler(newHandler) {
+                var _handler = handler;
+                handler = newHandler;
+            }
+
+            var match;
+
+            if (!match) _event.apply(this, arguments);
+        }
+    });
+
+    /*
     Wrap the pShare class so we can carry over the filter properties
     that were set in the RPC function
     */
@@ -440,6 +539,7 @@ See README.md on the Github page for full description of features
         var __import = x._import;
         x._import = function(e) {
             __import(e);
+            x.userprofile = e.userprofile;
             x.dorkynuke = e.dorkynuke;
             x.deleteReasons = e.deleteReasons;
         }
@@ -453,6 +553,32 @@ See README.md on the Github page for full description of features
         },
         set(x) {
             pShareBase.base = x;
+        }
+    })
+
+    window.ParameterBase = function(e) {
+        var x = new ParameterBase.base(e);
+
+        var _mask = x.mask;
+        x.mask = function(e) {
+            if (this.id !== feedFilterParam.id) {
+                _mask(e);
+            }
+        }
+
+        return x;
+    }
+
+    /*
+    Need to wrap the Parameter class to override the mask function
+    to allow the pipe character in the feedFilterParam
+    */
+    Object.defineProperty(window, "Parameter", {
+        get() {
+            return ParameterBase;
+        },
+        set(x) {
+            ParameterBase.base = x;
         }
     })
 
@@ -738,6 +864,50 @@ See README.md on the Github page for full description of features
         }
     });
 
+    function setUserStats(user, dt) {
+        if (!getUserSetting("userstats")) return;
+
+        var stats = {
+            repPerDay: 0,
+            upvotesPerPost: 0
+        };
+
+        user.stats = stats;
+
+        ///*
+        stats.regDateTime = typeof user.regdate.getMonth === "function" ? user.regdate : new Date(user.regdate * 1000);
+        stats.accountAgeDays = (dt - stats.regDateTime) / 1000 / 3600 / 24;
+
+        stats.repPerDay = user.reputation / stats.accountAgeDays;
+        stats.upvotesPerPost = user.likers_count / user.postcnt;
+        stats.postsPerDay = user.postcnt / stats.accountAgeDays;
+    }
+
+    function getUserStats(user) {
+        if (!user || !user.stats) return [];
+
+        let infos = [
+            {
+                label: "Profile language",
+                value: user.l || user.language
+            },
+            {
+                label: "Account age",
+                value: `${Math.trunc(user.stats.accountAgeDays)} days`
+            },
+            {
+                label: "Rep/day",
+                value: (user.stats.repPerDay).toFixed(2)
+            },
+            {
+                label: "Posts/day",
+                value: (user.stats.postsPerDay).toFixed(2)
+            }
+        ];
+
+        return infos;
+    }
+
     waitUntil(() => app.api.rpc)
         .then(() => {
 
@@ -748,7 +918,8 @@ See README.md on the Github page for full description of features
         app.api.rpc = function(n, t, r, o) {
 
             /*
-            Execute code before the rpc method is even called
+            Execute code before the rpc method is even called. Useful for modifying
+            parameters such as feed posts per page, address ignore list, etc
             */
             switch (n) {
                     //case "getboostfeed":
@@ -784,12 +955,10 @@ See README.md on the Github page for full description of features
                     var dt = new Date()
                     dt = dt.addHours(-(dt.getTimezoneOffset() / 60));
                     return ret.then(function(e) {
-
-                        switch(n) {
-                            case "gethierarchicalstrip":
-                            case "gethistoricalstrip":
-                                e.contents.forEach(share => {
-                                //for(var i = 0; i < e.contents.length; i++) {
+                        e.contents.forEach(share => {
+                            switch(n) {
+                                case "gethierarchicalstrip":
+                                case "gethistoricalstrip":
                                     if (!app.platform.sdk.users.storage[app.user.address.value]
                                         .relation(share.address, "subscribes") || feedfilter){
 
@@ -801,16 +970,7 @@ See README.md on the Github page for full description of features
 
                                         var user = share.userprofile;
 
-                                        user.repPerDay = 0;
-                                        user.upvotesPerPost = 0;
-
-                                        ///*
-                                        user.regDateTime = new Date(user.regdate * 1000);
-                                        user.accountAgeDays = (dt - user.regDateTime) / 1000 / 3600 / 24;
-
-                                        user.repPerDay = user.reputation / user.accountAgeDays;
-                                        user.upvotesPerPost = user.likers_count / user.postcnt;
-                                        //*/
+                                        setUserStats(share.userprofile, dt);
 
                                         args.belowThresholds = (!repPerDayThreshold || user.repPerDay <= repPerDayThreshold) &&
                                             (!upvotesPerPostThreshold || user.upvotesPerPost <= upvotesPerPostThreshold);
@@ -837,12 +997,10 @@ See README.md on the Github page for full description of features
                                             }
                                         }
                                     }
-                                });
 
-                                break;
-                        }
-
-                        //return Promise.resolve(e);
+                                    break;
+                            }
+                        });
 
                         e.contents.forEach(x => {
                             nukeDonateComment(x.lastComment, noboost);
