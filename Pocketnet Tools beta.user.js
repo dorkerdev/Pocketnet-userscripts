@@ -756,7 +756,7 @@ See README.md on the Github page for full description of features
             waitUntil(() => app.platform.sdk.user.isNotAllowedName)
                 .then(() => {
                 app.platform.sdk.user.isNotAllowedName = function(e) {
-                    return true;
+                    return false;
                 };
             });
             //*/
