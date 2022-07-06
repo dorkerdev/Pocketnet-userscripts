@@ -4,6 +4,8 @@ If the devs change any of their code, these scripts could break. Just open up an
 2022-06-13
 All userscript files have been consolidated into Pocketnet Tools.user.js (except for autovote everything which is currently broken due to the new Bastyon UI redesign). Major update: All features are now configurable through the user settings menu. Scroll down the setting page and you will surely find it. For now, you will need to refresh the page for any changes to take effect as I have not yet figured out how to make then take effect instantly.
 
+![image](https://github.com/dorkerdev/Pocketnet-userscripts/blob/main/Pocketnet%20Tools%20settings%20screenshot.PNG)
+
 ### Description of configurables:
 
 #### Hide Left Panel
@@ -61,7 +63,7 @@ Used to hide accounts that have excessive post/vote metrics. Useful for coping w
 #### Feed ignore list
 A comma-delimited list of user addresses to be removed from the hierarchical and historical feeds. Less nuclear than a block
 #### Feed filter expression
-You can enter any JavaScript expression to query the parameters passed in by `args`. Below is what the `args` object looks like. Expression should return `true` for posts you wish to keep in the feed. Posts that fail the check will be removed. _You can only use single quotes for strings_. Double quotes are not supported due to Bastyon's code. Some examples of expressions you could use:
+You can enter any JavaScript expression to query the parameters passed in by `args`. Expression should return `true` for posts you wish to keep in the feed. Posts that fail the check will be removed. _You can only use single quotes for strings_. Double quotes are not supported due to Bastyon's code. Some examples of expressions you could use:
 
 `args.share.comments > 0` only show posts with comment count greater than 0  
 `args.share.userprofile.stats.accountAgeDays > 10` only show posts from accounts greater than 10 days old  
@@ -138,11 +140,24 @@ Shows only the post stub for content that was successfully filtered from the fee
 
 ![delete reasons](https://user-images.githubusercontent.com/89675012/175860649-7838253a-ccd1-400c-9205-d4489a25a849.png)
 
+#### Other automatically-included features
+
+##### Alternate profile avatar image
+
+Currently, profile avatars are uploaded to Imgur or the Pocketnet media server and used for your profile avatar. This feature lets you use a profile avatar located at an existing URL which is useful for **animated PNGs**. To use an animated PNG, follow these steps:
+
+  - Acquire an animated GIF
+  - Convert it to animated PNG (there are online services that do this very well)
+  - Upload your new PNG to a file host of your own and save the URL
+  - Finally, edit your profile bio, add `--img:[your image url]` to the end as shown in the below screenshot, and save. The URL will not be saved to your bio, but will instead be parsed out and set to your profile avatar URL instead
+
+![nSJH7tR](https://user-images.githubusercontent.com/89675012/177233404-36cb37ce-0e3e-459f-bd5e-c896ea2c491d.png)
+
+Note: Animated GIFs used to work, but Pocketnet_team, for reasons unknown, decided to ban them. I then began using animated PNG, but they couldn't ban those because their Bastyon avatar points to a PNG in their Github repo lmao. Out of petty spite, they will probably ban all PNGs that aren't sourced from their Github repo, but may as well have fun while we can.
+
+![image](https://user-images.githubusercontent.com/89675012/177233707-77e07ed0-e65d-42d7-80d4-e0e909fedbd4.png)
+
 **Note**: If the userscripts don't appear to work, try these:
 
 - Refresh the browser. Sometimes, the Bastyon page will load before your userscript extension initializes during your browser's first run
 - If your config options don't seem to work, go to the settings page and check/uncheck options in question and then refresh all tabs. I could have made some changes to the settings' keys, so the old ones could still be cached in your local storage
-
-#### Screenshot of new config page
-
-![image](https://github.com/dorkerdev/Pocketnet-userscripts/blob/main/Pocketnet%20Tools%20settings%20screenshot.PNG)
