@@ -113,20 +113,6 @@ See README.md on the Github page for full description of features
         el.appendChild(elVote);
     }
 
-    function init() {
-        return waitUntil(() => app.platform.sdk.address.pnet);
-        /*
-        return new Promise(resolve => {
-            setTimeout(() => {
-                resolve(x);
-            }, 5000);
-        });
-        //*/
-    }
-
-    //var xxx = console.log(await init());
-    //await (async function() { waitUntil(()=> true)})();
-
     var feedFilterParam;
 
     var configParams = [
@@ -238,27 +224,14 @@ See README.md on the Github page for full description of features
         //*/
     ];
 
-    /*
-    waitUntil(() => app.platform.sdk.usersettings.init).then(() => {
-        var init = app.platform.sdk.usersettings.init;
-        app.platform.sdk.usersettings.init = function(t) {
-            _.each(configParams, p => {
-                app.platform.sdk.usersettings.meta[p.id] = p;
-            });
-            return init(t);
-        }
-    });
-
-    //*/
-
-    var _initialized = false;
-    var getUserSetting = function(key) {
-        if (!_initialized) {
+    var _settingsInitialized = false;
+    function getUserSetting(key) {
+        if (!_settingsInitialized) {
             configParams.forEach(p => {
                 app.platform.sdk.usersettings.meta[p.id] = p;
             });
             app.platform.sdk.usersettings.init();
-            _initialized = true;
+            _settingsInitialized = true;
         }
 
         return app.platform.sdk.usersettings.meta[key].value;
@@ -339,6 +312,7 @@ See README.md on the Github page for full description of features
                         if (e.data.share.deleted) {
                             var clone = { share: e.data.share };
                             clone.userprofile = clone.share.userprofile;
+                            clone.userstats = clone.userprofile.stats;
                             delete clone.share.userprofile;
 
                             var htmlReasons = `<div>Content removed by userscript</div><ul>${Array.from(e.data.share.deleteReasons.map(x=> `<li>${x}</li>`)).join("")}</ul>`;
