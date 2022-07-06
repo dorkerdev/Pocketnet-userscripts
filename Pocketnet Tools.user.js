@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Pocketnet Tools
 // @namespace    http://tampermonkey.net/
-// @version      current
+// @version      20
 // @description  Adds various UI enhancements to the post/content template (see top comment for details)
 // @author       dorker
 // @match        https://bastyon.com/*
@@ -16,6 +16,11 @@ See README.md on the Github page for full description of features
 (async function() {
     'use strict';
 
+    /*
+    Waits asynchronously until a condition is true. Mainly
+    used to pause execution of code while waiting for
+    Bastyon's various UI elements to fully initialize
+    */
     function waitUntil(isTrue, interval) {
         function TryIt() {
             var ret;
@@ -63,6 +68,15 @@ See README.md on the Github page for full description of features
         });
     }
 
+    function userBlockedBy(blockerAddress) {
+        return new Promise((res, rej) => app.api.rpc("getuserprofile", [[blockerAddress],"0"]).then(data => {
+            var user = app.platform.sdk.address.pnet().address;
+            var blockIndex = data[0].blocking.indexOf(user);
+            var blocked = blockIndex > -1;
+            res(blocked);
+        }));
+    }
+
     function sortMultiple(arr, comparers){
         arr.sort((a,b) => {
             var i;
@@ -99,36 +113,24 @@ See README.md on the Github page for full description of features
         el.appendChild(elVote);
     }
 
-    function init() {
-        return waitUntil(() => app.platform.sdk.address.pnet);
-        /*
-        return new Promise(resolve => {
-            setTimeout(() => {
-                resolve(x);
-            }, 5000);
-        });
-        //*/
-    }
-
-    //var xxx = console.log(await init());
-    //await (async function() { waitUntil(()=> true)})();
+    var feedFilterParam;
 
     var configParams = [
         {
-            name: "Hide Left Panel",
+            name: "Hide left panel",
             id: "hideleftpanel",
             type: "BOOLEAN",
             value: false,
         },
         {
-            name: "Show Post Votes",
+            name: "Show post votes",
             id: "showvotes",
             type: "BOOLEAN",
             value: true,
         },
         ///*
         {
-            name: "Enable Page Titles",
+            name: "Enable page titles",
             id: "pagetitles",
             type: "BOOLEAN",
             value: false,
@@ -141,43 +143,48 @@ See README.md on the Github page for full description of features
             value: false,
         },
         {
-            name: "Show Block Message",
+            name: "Show block message",
             id: "showblockmessage",
             type: "BOOLEAN",
             value: true,
         },
         {
-            name: "Show Blocked Profile Content",
+            name: "Show blocked profile content",
             id: "showblockedprofilecontent",
             type: "BOOLEAN",
             value: false,
         },
         {
-            name: "Add Comment Sidebar Link",
+            name: "Add comment sidebar link",
             id: "commentsidebarlink",
             type: "BOOLEAN",
             value: true,
         },
         {
-            name: "Hide Boosted Content",
+            name: "Hide boosted content",
             id: "hideboost",
             type: "BOOLEAN",
             value: false,
         },
         {
-            name: "Show User Block List",
+            name: "Show user block list",
             id: "showuserblocks",
             type: "BOOLEAN",
             value: true,
         },
         {
-            name: "Disable Default Image Resizer/Converter",
+            name: "Disable default image resizer/converter",
             id: "disableimageresize",
             type: "BOOLEAN",
             value: true,
         },
         //*
-
+        {
+            name: "Show additional user stats",
+            id: "userstats",
+            type: "BOOLEAN",
+            value: false,
+        },
         {
             name: "Show walled content",
             id: "nowalls",
@@ -191,41 +198,40 @@ See README.md on the Github page for full description of features
             value: "",
         },
         {
-            name: "Upvote per post threshold",
+            name: "Upvotes per post threshold",
             id: "upvotesperpostthreshold",
             type: "STRINGANY",
             value: "",
         },
         {
-            name: "Feed filter",
+            name: "Feed ignore list",
+            id: "feedignorelist",
+            type: "STRINGANY",
+            value: "",
+        },
+        feedFilterParam = {
+            name: "Feed filter expression",
             id: "feedfilter",
             type: "STRINGANY",
             value: "",
+        },
+        {
+            name: "Debug hidden feed content",
+            id: "debughiddenfeedcontent",
+            type: "BOOLEAN",
+            value: true,
         }
         //*/
     ];
 
-    /*
-    waitUntil(() => app.platform.sdk.usersettings.init).then(() => {
-        var init = app.platform.sdk.usersettings.init;
-        app.platform.sdk.usersettings.init = function(t) {
-            _.each(configParams, p => {
-                app.platform.sdk.usersettings.meta[p.id] = p;
-            });
-            return init(t);
-        }
-    });
-
-    //*/
-
-    var _initialized = false;
-    var getUserSetting = function(key) {
-        if (!_initialized) {
+    var _settingsInitialized = false;
+    function getUserSetting(key) {
+        if (!_settingsInitialized) {
             configParams.forEach(p => {
                 app.platform.sdk.usersettings.meta[p.id] = p;
             });
             app.platform.sdk.usersettings.init();
-            _initialized = true;
+            _settingsInitialized = true;
         }
 
         return app.platform.sdk.usersettings.meta[key].value;
@@ -253,6 +259,13 @@ See README.md on the Github page for full description of features
             } catch {
             }
 
+            switch(n.name) {
+                case "groupshares":
+                    n.data.shares = n.data.shares.filter(x=> !x.dorkynuke);
+                    //if (!!n.data.share.dorkynuke) return "";
+                    break;
+            }
+
             return renderTemplate(a, t, n);
         }
 
@@ -260,6 +273,26 @@ See README.md on the Github page for full description of features
             var ret = insertTemplate(e, a);
             //console.log(e.name);
             switch(e.name){
+                case "index":
+                    switch(e.id){
+                        case "menu":
+                            {
+                                /*
+                                Turn site logo into a clickable link
+                                works only in debug mode. something else must be overwriting
+                                the changes after this executes. Disabled for now
+                                */
+                                /*
+                                let logo = e.el.find("img.header_logo");
+                                let logoParent = logo.parent();
+                                let link = $("<a href='index'></a>");
+                                logoParent.append(link);
+                                link.append(logo.detach());
+                                //*/
+                            }
+                            break;
+                    }
+                    break;
                 case "lastcommentslist":
                     /*
                     Comment sidebar. Adds [link] to post that you can open in
@@ -274,56 +307,115 @@ See README.md on the Github page for full description of features
                     });
                     break;
                 case "share":
-                    /*
-                    Remove blocking class so that you can still view the posts and comment
-                    sections of users you've blocked
-                    */
-                    if (getUserSetting("showblockedprofilecontent")) {
-                        e.el.removeClass("blocking");
-                    }
-
-                    /*
-                    Add language feed post was created in
-                    */
-                    e.el.find("div.authorTable > div.sys").append(`<span>(${e.data.share.language})</span>`)
-
-                    /*
-                    Outer post template. Adds permalink anchor alement to upper-right corner
-                    so that you can open in new tab or copy URL more easily
-                    */
-
-                    var metaHead = e.el.find("div.metapanel");
-
-                    metaHead.attr("style", "width: 1px!important");
-                    metaHead.attr("style", "textAlign: right");
-                    metaHead.prepend(`<a href="post?s=${e.data.share.txid}" style="paddingRight = 10px" target="_blank">permalink<a>`);
-
-                    /*
-                    Adds "Show votes" button
-                    */
-                    if (getUserSetting("showvotes")) {
-                        var panel = e.el.find("div.panel.sharepanel");
-                        var container = $("<div style=\"text-align:right\"></div>");
-                        var link = $("<input type=\"button\" value=\"Show votes\" />")
-
-                        container.append(link);
-                        container.insertAfter(panel);
-
-                        link.click(() => {
-                            //e.target.disabled = true;
-                            displayVotesByPost(e.data.share.txid, container[0]);
-                        });
-                    }
-
-                    break;
                 case "sharearticle":
                     {
+                        if (e.data.share.deleted) {
+                            var clone = { share: e.data.share };
+                            clone.userprofile = clone.share.userprofile;
+                            clone.userstats = clone.userprofile.stats;
+                            delete clone.share.userprofile;
+
+                            var htmlReasons = `<div>Content removed by userscript</div><ul>${Array.from(e.data.share.deleteReasons.map(x=> `<li>${x}</li>`)).join("")}</ul>`;
+                            var elInfo = $(`<div style='height: 200px;overflow-wrap: break-word; overflow-y: hidden'></div>`);
+
+                            elInfo.click(e => {
+                                var height = e.currentTarget.style.height;
+                                if (height) {
+                                    e.currentTarget.style.height = '';
+                                    $(e.currentTarget).off(e.type);
+                                }
+                            });
+
+                            for(var prop1 in clone) {
+                                for(var prop2 in clone[prop1]){
+                                    var val = clone[prop1][prop2];
+                                    switch(typeof val) {
+                                        case "object":
+                                        case "function":
+                                            break;
+                                        default:
+                                            elInfo.append(`<div><strong>${prop1}.${prop2}</strong>: ${clone[prop1][prop2]}</div>`);
+                                            break;
+                                    }
+
+                                }
+                            }
+
+                            var elWrapper = $(`<div style='margin: 15px'><div style='color: red;'>${htmlReasons}</div></div>`);
+
+                            elWrapper.append(elInfo);
+                            e.el.empty();
+                            e.el.append(elWrapper);
+
+                            break;
+                        }
+
                         /*
-                        Show score count
+                        Remove blocking class so that you can still view the posts and comment
+                        sections of users you've blocked
                         */
-                        var score = e.el.find("div.postscoresshow > span:first-of-type")
-                        score && score.prepend(e.data.share.scnt + "/");
+                        if (getUserSetting("showblockedprofilecontent")) {
+                            e.el.removeClass("blocking");
+                        }
+
+                        switch(e.name) {
+                            case "sharearticle":
+                                /*
+                                Show score count
+                                */
+                                var score = e.el.find("div.postscoresshow > span:first-of-type")
+                                score && score.prepend(e.data.share.scnt + "/");
+                                break;
+                            case "share":
+                                if (getUserSetting("userstats")) {
+                                    var header = e.el.find("div.authorTable > div.sys");
+
+                                    function addMetadata(label, value) {
+                                        header.append(`<div><span>${label}: ${value};</span></div>`)
+                                    }
+
+                                    addMetadata("Feed", e.data.share.language);
+
+                                    var stats = getUserStats(e.data.share.userprofile);
+
+                                    stats.forEach(x=> addMetadata(x.label, x.value));
+                                }
+
+                                /*
+                                Outer post template. Adds permalink anchor alement to upper-right corner
+                                so that you can open in new tab or copy URL more easily
+                                */
+
+                                var metaHead = e.el.find("div.metapanel");
+
+                                metaHead.attr("style", "width: 1px!important");
+                                metaHead.attr("style", "textAlign: right");
+                                metaHead.prepend(`<a href="post?s=${e.data.share.txid}" style="paddingRight = 10px" target="_blank">permalink<a>`);
+
+                                /*
+                                Adds "Show votes" button
+                                */
+                                if (getUserSetting("showvotes")) {
+                                    var panel = e.el.find("div.panel.sharepanel");
+                                    var container = $("<div style=\"text-align:right\"></div>");
+                                    var link = $("<input type=\"button\" value=\"Show votes\" />")
+
+                                    container.append(link);
+                                    container.insertAfter(panel);
+
+                                    link.click(() => {
+                                        //e.target.disabled = true;
+                                        displayVotesByPost(e.data.share.txid, container[0]);
+                                    });
+                                }
+                                break;
+                        }
+
+
                     }
+                    break;
+                case "stars":
+
                     break;
                 case "post":
                     /*
@@ -339,21 +431,10 @@ See README.md on the Github page for full description of features
                 case "info":
                     {
                         if (e.data.module.map.href === "author") {
-                            let accountAge = (new Date() - e.data.author.data.regdate) / 1000 / 3600 / 24;
-                            let infos = [
-                                {
-                                    label: "Account age",
-                                    value: `${Math.trunc(accountAge)} days`
-                                },
-                                {
-                                    label: "Rep/day",
-                                    value: (e.data.author.data.reputation / accountAge).toFixed(2)
-                                },
-                                {
-                                    label: "Posts/day",
-                                    value: (e.data.author.data.postcnt / accountAge).toFixed(2)
-                                }
-                            ];
+                            let author = e.data.author.data;
+                            setUserStats(author, new Date());
+
+                            var infos = getUserStats(author);
 
                             infos.forEach(info => {
                                 //let o = infos[info];
@@ -375,6 +456,13 @@ See README.md on the Github page for full description of features
         return x;
     }
 
+    /*
+    It is critical that this run before any other code to ensure that
+    the nModule class can be wrapped before it is defined in Bastyon's
+    code. Otherwise, we won't be able to intercept new instances of
+    the class which will prevent being able to wrap its functions as
+    shown above with nModuleBase.
+    */
     Object.defineProperty(window, "nModule", {
         get() {
             return nModuleBase;
@@ -384,6 +472,142 @@ See README.md on the Github page for full description of features
         }
     })
 
+    /*
+    Override the global event dispatcher so that we can intercept events
+    to add additional functionality. Disabled for now
+    */
+    !!0 && waitUntil(() => jQuery.event.dispatch).then(function(e) {
+        var _event = jQuery.event.dispatch;
+
+        //jQuery.event.add = function( elem, types, handler, data, selector ) {
+        jQuery.event.dispatch = function( nativeEvent ) {
+            var elem = nativeEvent.srcElement;
+
+            function eventMatches(sel, events) {
+                var match = elem && elem.matches(sel) &&
+                    nativeEvent.type === events;
+                try {
+                    //var log = "EVENT: " + elem.classList + " " + nativeEvent.type;
+                    //console.log(log);
+                    //console.log(elem);
+                    return match;
+                } catch(error) {
+                    console.log(error);
+                }
+            }
+
+            function wrapHandler(newHandler) {
+                var _handler = handler;
+                handler = newHandler;
+            }
+
+            var match;
+
+            if (!match) _event.apply(this, arguments);
+        }
+    });
+
+    /*
+    Wrap the pShare class so we can carry over the filter properties
+    that were set in the RPC function
+    */
+    window.pShareBase = function() {
+        var x = new pShareBase.base;
+
+        var __import = x._import;
+        x._import = function(e) {
+            __import(e);
+            x.userprofile = e.userprofile;
+            x.dorkynuke = e.dorkynuke;
+            x.deleteReasons = e.deleteReasons;
+        }
+
+        return x;
+    }
+
+    Object.defineProperty(window, "pShare", {
+        get() {
+            return pShareBase;
+        },
+        set(x) {
+            pShareBase.base = x;
+        }
+    })
+
+    window.ParameterBase = function(e) {
+        var x = new ParameterBase.base(e);
+
+        var _mask = x.mask;
+        x.mask = function(e) {
+            if (this.id !== feedFilterParam.id) {
+                _mask(e);
+            }
+        }
+
+        return x;
+    }
+
+    /*
+    Need to wrap the Parameter class to override the mask function
+    to allow the pipe character in the feedFilterParam
+    */
+    Object.defineProperty(window, "Parameter", {
+        get() {
+            return ParameterBase;
+        },
+        set(x) {
+            ParameterBase.base = x;
+        }
+    })
+
+    /*
+    window.UserInfoBase = function() {
+        var x = new UserInfoBase.base;
+
+        var _about = x.about.set;
+
+        x.about.set = function (e) {
+            let aboutarr = e.split("--img:");
+            if (aboutarr.length === 2) {
+                x.image.set(aboutarr[1]);
+            }
+
+            _about(aboutarr[0].trim());
+
+        }
+
+        return x;
+    }
+
+    Object.defineProperty(window, "UserInfo", {
+        get() {
+            return UserInfoBase;
+        },
+        set(x) {
+            UserInfoBase.base = x;
+        }
+    })
+    //*/
+
+    /*
+    window.initUploadBase = function(e) {
+        var x = new initUploadBase.base(e);
+    }
+
+    Object.defineProperty(window, "initUpload", {
+        get() {
+            return initUploadBase;
+        },
+        set(x) {
+            initUploadBase.base = x;
+        }
+    })
+    //*/
+
+    /*
+    Defer execution of this script while we wait for the .meta property to
+    be defined. This will ensure that the new config settings will work
+    */
     await waitUntil(() => app.platform.sdk.usersettings.meta);
 
     waitUntil(() => app.platform.sdk).then(sdk => {
@@ -397,18 +621,6 @@ See README.md on the Github page for full description of features
                 sheet.insertRule("#main:not(.videomain) .lentacell { margin-left: 0 }",0);
             });
         }
-
-        /*
-        var sdk_node_shares_transform = sdk.node.shares.transform;
-        sdk.node.shares.transform = function(e, n) {
-            var x = sdk_node_shares_transform(e, n);
-            e.forEach(share => {
-                x.belowThresholds = e.belowThresholds;
-            });
-
-            return x;
-        }
-        //*/
 
         waitUntil(() => sdk.usersettings.createall).then(() => {
             var createall = sdk.usersettings.createall;
@@ -518,7 +730,7 @@ See README.md on the Github page for full description of features
             waitUntil(() => app.platform.sdk.user.isNotAllowedName)
                 .then(() => {
                 app.platform.sdk.user.isNotAllowedName = function(e) {
-                    return true;
+                    return false;
                 };
             });
             //*/
@@ -557,11 +769,6 @@ See README.md on the Github page for full description of features
     */
     if (getUserSetting("pagetitles")) {
         (function() {
-            /*
-        Need to figure out how to get the app name so that I don't
-        have to hardcode "Bastyon".
-        window.location.host.split(".")[0]
-        */
             waitUntil(() => app.nav.api.load).then(load => {
                 app.nav.api.load = function(e) {
                     if (e.history === true) {
@@ -606,6 +813,79 @@ See README.md on the Github page for full description of features
         }
     }
 
+    var noboost = getUserSetting("hideboost"), nowalls = getUserSetting("nowalls"),
+        debughiddenfeedcontent = !!getUserSetting("debughiddenfeedcontent");
+    var feedIgnoreList = (getUserSetting("feedignorelist") || "").split(",");
+    var feedFilterExpression = getUserSetting("feedfilter");
+    var repPerDayThreshold = parseFloat(getUserSetting("repperdaythreshold"));
+    var upvotesPerPostThreshold = parseFloat(getUserSetting("upvotesperpostthreshold"));
+
+    var feedFilter;
+
+    try {
+        feedFilter = new Function(["args"], `return ${feedFilterExpression || "true"};`);
+    } catch (error) {
+        sitemessage(`${feedFilterParam.name}: ${error.message}`);
+    }
+
+    waitUntil(() => app.platform.sdk.node.transactions.create.common).then(common => {
+        var _common = app.platform.sdk.node.transactions.create.common;
+        app.platform.sdk.node.transactions.create.common = function(p) {
+            if (arguments[1] instanceof UserInfo) {
+                let aboutarr = arguments[1].about.v.split("--img:");
+                if (aboutarr.length === 2) {
+                    arguments[1].image.v = aboutarr[1];
+                    arguments[1].about.v = aboutarr[0].trim();
+                }
+            }
+            _common.apply(this, arguments)
+        }
+    });
+
+    function setUserStats(user, dt) {
+        if (!getUserSetting("userstats")) return;
+
+        var stats = {
+            repPerDay: 0,
+            upvotesPerPost: 0
+        };
+
+        user.stats = stats;
+
+        ///*
+        stats.regDateTime = typeof user.regdate.getMonth === "function" ? user.regdate : new Date(user.regdate * 1000);
+        stats.accountAgeDays = (dt - stats.regDateTime) / 1000 / 3600 / 24;
+
+        stats.repPerDay = user.reputation / stats.accountAgeDays;
+        stats.upvotesPerPost = user.likers_count / user.postcnt;
+        stats.postsPerDay = user.postcnt / stats.accountAgeDays;
+    }
+
+    function getUserStats(user) {
+        if (!user || !user.stats) return [];
+
+        let infos = [
+            {
+                label: "Profile language",
+                value: user.l || user.language
+            },
+            {
+                label: "Account age",
+                value: `${Math.trunc(user.stats.accountAgeDays)} days`
+            },
+            {
+                label: "Rep/day",
+                value: (user.stats.repPerDay).toFixed(2)
+            },
+            {
+                label: "Posts/day",
+                value: (user.stats.postsPerDay).toFixed(2)
+            }
+        ];
+
+        return infos;
+    }
+
     waitUntil(() => app.api.rpc)
         .then(() => {
 
@@ -616,7 +896,8 @@ See README.md on the Github page for full description of features
         app.api.rpc = function(n, t, r, o) {
 
             /*
-            Execute code before the rpc method is even called
+            Execute code before the rpc method is even called. Useful for modifying
+            parameters such as feed posts per page, address ignore list, etc
             */
             switch (n) {
                     //case "getboostfeed":
@@ -630,8 +911,6 @@ See README.md on the Github page for full description of features
             handled below
             */
             var ret = oldrpc(n, t, r, o);
-
-            var noboost = getUserSetting("hideboost"), nowalls = getUserSetting("nowalls");
 
             /*
             Handle the promise object returned from the original rpc call
@@ -654,52 +933,63 @@ See README.md on the Github page for full description of features
                     var dt = new Date()
                     dt = dt.addHours(-(dt.getTimezoneOffset() / 60));
                     return ret.then(function(e) {
+                        e.contents.forEach(share => {
+                            switch(n) {
+                                case "gethierarchicalstrip":
+                                case "gethistoricalstrip":
+                                    if (!app.platform.sdk.users.storage[app.user.address.value]
+                                        .relation(share.address, "subscribes") || feedfilter){
 
-                        switch(n) {
-                            case "gethierarchicalstrip":
-                            case "gethistoricalstrip":
-                                var repPerDayThreshold = parseFloat(getUserSetting("repperdaythreshold"));
-                                var upvotesPerPostThreshold = parseFloat(getUserSetting("upvotesperpostthreshold"));
-                                var filtered = e.contents.filter(x => {
-                                    var repPerDay = 0;
-                                    var upvotesPerPost = 0;
+                                        var args = {
+                                            rpcParams: {
+                                                feedFilter: t[5]
+                                            },
+                                            share: share,
+                                            user: share.userprofile,
+                                            today: dt
+                                        };
 
-                                    ///*
-                                    var regDate = new Date(x.userprofile.regdate * 1000);
-                                    var accountAgeDays = (dt - regDate) / 1000 / 3600 / 24;
+                                        var user = share.userprofile;
 
-                                    repPerDay = x.userprofile.reputation / accountAgeDays;
-                                    upvotesPerPost = x.userprofile.likers_count / x.userprofile.postcnt;
-                                    //*/
+                                        setUserStats(share.userprofile, dt);
 
-                                    var belowThresholds = (!repPerDayThreshold || repPerDay <= repPerDayThreshold) &&
-                                        (!upvotesPerPostThreshold || upvotesPerPost <= upvotesPerPostThreshold);
+                                        args.belowThresholds = (!repPerDayThreshold || user.repPerDay <= repPerDayThreshold) &&
+                                            (!upvotesPerPostThreshold || user.upvotesPerPost <= upvotesPerPostThreshold);
 
-                                    x.belowThresholds = !!(belowThresholds ||
-                                                           app.platform.sdk.users.storage[app.user.address.value].relation(x.address, "subscribes"));
+                                        var ignore = !!feedIgnoreList.includes(share.address);
 
-                                    return x.belowThresholds;
+                                        var filtered;
 
-                                    /*
-                                    return belowThresholds ||
-                                        app.platform.sdk.users.storage[app.user.address.value].relation(x.address, "subscribes")
-                                    //*/
-                                });
+                                        try {
+                                            filtered = !feedFilter(args);
+                                        } catch (error) {
+                                            sitemessage(`${feedFilterParam.name}: ${error.message}`);
+                                        }
 
-                                if (filtered.length === 0) {
-                                    e.contents = [e.contents[e.contents.length -1]];
-                                } else {
-                                    e.contents = filtered;
-                                }
-                                break;
-                        }
+                                        if (!args.belowThresholds || ignore || filtered) {
+                                            if (debughiddenfeedcontent) {
+                                                args.share.deleted = true;
+                                                args.share.deleteReasons = [];
+                                                if (!args.belowThresholds) args.share.deleteReasons.push("Exceeded thresholds");
+                                                if (ignore) args.share.deleteReasons.push("Address ignore list");
+                                                if (filtered) args.share.deleteReasons.push(feedFilterParam.name);
+                                            } else {
+                                                args.share.dorkynuke = true;
+                                            }
+                                        }
+                                    }
+
+                                    break;
+                            }
+                        });
 
                         e.contents.forEach(x => {
                             nukeDonateComment(x.lastComment, noboost);
                             /*
                             Show all walled content
+                            2022-06-25 - autoshow walled content if user is not logged in
                             */
-                            if (nowalls) x.s.f = "0";
+                            if (nowalls || !app.user.address.value) x.s.f = "0";
                         });
 
                         return Promise.resolve(e);
@@ -709,6 +999,12 @@ See README.md on the Github page for full description of features
             }
         };
     });
+
+    //utilities
+    function arrayIncludes(arr, value) {
+        return arr && arr.includes(value);
+    }
+
 
     /*******************************************************************
     Nothing below this comment is needed. Will remove in future release
@@ -840,43 +1136,4 @@ See README.md on the Github page for full description of features
         const observer = new MutationObserver(callback);
         observer.observe(targetNode, config);
     }
-
-    /*
-    waitForElement("#main:not(.videomain) .leftpanelcell", document.body, e =>{
-        e.style.display = "none";
-    });
-
-    waitForElement("#main:not(.videomain) .lentacell", document.body, e =>{
-        e.style.marginLeft = "0px";
-    });
-    //*/
-
-    //document.querySelector("div.leftpanelcell").style.display = "None";
-    //document.querySelector("#main .lentacell").style.marginLeft = "0px";
-
-    /*
-    var shite = document.createElement("div");
-    shite.id = "shite";
-    shite.style.display = "none";
-    document.body.appendChild(shite);
-    //*/
-
-    /*
-    var oldRpc = app.api.rpc;
-    app.api.rpc = function(t,r,n) {
-
-        if (t === "getlastcomments"){
-            r[0] = "20";
-            r.xxxxxxxx = Date.now();
-        }
-
-        return oldRpc(t,r,n);
-	};
-    //*/
-
-    //var oldRpc = app.api.rpc;
-    //app.api.rpc = function(t,r,n) { console.log(t); return oldRpc(t,r,n); };
-
-    // Later, you can stop observing
-    //observer.disconnect();
 })();
