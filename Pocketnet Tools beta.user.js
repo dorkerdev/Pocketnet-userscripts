@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Pocketnet Tools
 // @namespace    http://tampermonkey.net/
-// @version      20
+// @version      21
 // @description  Adds various UI enhancements to the post/content template (see top comment for details)
 // @author       dorker
 // @match        https://bastyon.com/*
@@ -155,7 +155,7 @@ See README.md on the Github page for full description of features
             value: false,
         },
         {
-            name: "Add comment sidebar link",
+            name: "Comment sidebar enhancements",
             id: "commentsidebarlink",
             type: "BOOLEAN",
             value: true,
@@ -261,7 +261,7 @@ See README.md on the Github page for full description of features
 
             switch(n.name) {
                 case "groupshares":
-                    n.data.shares = n.data.shares.filter(x=> !x.dorkynuke);
+                    n.data.shares = n.data.shares.filter(x=> !x.data?.dorkynuke);
                     //if (!!n.data.share.dorkynuke) return "";
                     break;
             }
@@ -272,6 +272,33 @@ See README.md on the Github page for full description of features
         x.insertTemplate = function(e, a) {
             var ret = insertTemplate(e, a);
             //console.log(e.name);
+            /*
+            authorcaption
+            best
+            body
+            categories
+            graph
+            groupshares
+            images
+            index
+            info
+            lastcommentslist
+            lastprice
+            lenta
+            list
+            menu
+            post
+            postline
+            repost
+            settings
+            share
+            sharearticle
+            shares
+            sharevideolight
+            stars
+            tags
+            url
+            */
             switch(e.name){
                 case "index":
                     switch(e.id){
@@ -300,6 +327,8 @@ See README.md on the Github page for full description of features
                     */
                     if (!getUserSetting("commentsidebarlink")) break;
 
+                    e.el.find("div.icons").remove();
+
                     e.el.find("div.lastcommentslist > div.commentgroup").each((i,el) => {
                         var shareId = el.attributes["share"].value;
                         var commentId = $(el).find("div.comment").prop("id");
@@ -310,12 +339,27 @@ See README.md on the Github page for full description of features
                 case "sharearticle":
                     {
                         if (e.data.share.deleted) {
+                            /*
+                            function moveProperty(source, dest, prop) {
+                                dest[prop] = source[prop];
+                                delete source[prop];
+                            }
+
+                            function dumpObject(source, dest, objProp) {
+                                for(var i in source[objProp]) {
+                                    dest[i] = source[objProp][i];
+                                }
+
+                                delete source[objProp];
+                            }
+                            //*/
+
                             var clone = { share: e.data.share };
                             clone.userprofile = clone.share.userprofile;
                             clone.userstats = clone.userprofile.stats;
                             delete clone.share.userprofile;
 
-                            var htmlReasons = `<div>Content removed by userscript</div><ul>${Array.from(e.data.share.deleteReasons.map(x=> `<li>${x}</li>`)).join("")}</ul>`;
+                            var htmlReasons = `<div>Content removed by userscript</div><ul>${Array.from(e.data.share.data?.deleteReasons?.map(x=> `<li>${x}</li>`)).join("")}</ul>`;
                             var elInfo = $(`<div style='height: 200px;overflow-wrap: break-word; overflow-y: hidden'></div>`);
 
                             elInfo.click(e => {
@@ -371,6 +415,7 @@ See README.md on the Github page for full description of features
                                     var header = e.el.find("div.authorTable > div.sys");
 
                                     function addMetadata(label, value) {
+                                        if (!value) return;
                                         header.append(`<div><span>${label}: ${value};</span></div>`)
                                     }
 
@@ -379,6 +424,8 @@ See README.md on the Github page for full description of features
                                     var stats = getUserStats(e.data.share.userprofile);
 
                                     stats.forEach(x=> addMetadata(x.label, x.value));
+
+                                    addMetadata("Page", e.data.share?.data?.page);
                                 }
 
                                 /*
@@ -472,17 +519,24 @@ See README.md on the Github page for full description of features
         }
     })
 
+    false && waitUntil(() => jQuery.event.add).then(function(e) {
+        var _event = jQuery.event.add;
+
+        jQuery.event.add = function(elem, types, handler, data, selector) {
+            _event.apply(this, arguments);
+        }
+    });
+
     /*
     Override the global event dispatcher so that we can intercept events
     to add additional functionality. Disabled for now
     */
-    !!0 && waitUntil(() => jQuery.event.dispatch).then(function(e) {
+    false && waitUntil(() => jQuery.event.dispatch).then(function(e) {
         var _event = jQuery.event.dispatch;
 
-        //jQuery.event.add = function( elem, types, handler, data, selector ) {
         jQuery.event.dispatch = function( nativeEvent ) {
             var elem = nativeEvent.srcElement;
-
+            //console.log(elem);
             function eventMatches(sel, events) {
                 var match = elem && elem.matches(sel) &&
                     nativeEvent.type === events;
@@ -517,9 +571,11 @@ See README.md on the Github page for full description of features
         var __import = x._import;
         x._import = function(e) {
             __import(e);
+            //x.rpc = e.rpc;
+            x.data = e.data;
             x.userprofile = e.userprofile;
-            x.dorkynuke = e.dorkynuke;
-            x.deleteReasons = e.deleteReasons;
+            //x.dorkynuke = e.dorkynuke;
+            //x.deleteReasons = e.deleteReasons;
         }
 
         return x;
@@ -831,11 +887,19 @@ See README.md on the Github page for full description of features
     waitUntil(() => app.platform.sdk.node.transactions.create.common).then(common => {
         var _common = app.platform.sdk.node.transactions.create.common;
         app.platform.sdk.node.transactions.create.common = function(p) {
-            if (arguments[1] instanceof UserInfo) {
-                let aboutarr = arguments[1].about.v.split("--img:");
-                if (aboutarr.length === 2) {
-                    arguments[1].image.v = aboutarr[1];
-                    arguments[1].about.v = aboutarr[0].trim();
+            var obj = arguments[1];
+            if (obj instanceof UserInfo) {
+                let arr = obj.about.v.split("--img:");
+                if (arr.length === 2) {
+                    obj.image.v = arr[1];
+                    obj.about.v = arr[0].trim();
+                }
+            } else if (obj instanceof Comment) {
+                let arr = obj.message.v.split("--img:");
+                if (arr.length === 2) {
+                    let images = arr[1].split("\n").filter(x => x);
+                    obj.images.v = images;
+                    obj.message.v = arr[0].trim();
                 }
             }
             _common.apply(this, arguments)
@@ -893,6 +957,7 @@ See README.md on the Github page for full description of features
         Override the rpc function with one of our own
         */
         var oldrpc = app.api.rpc;
+        let feedPage = {};
         app.api.rpc = function(n, t, r, o) {
 
             /*
@@ -933,7 +998,12 @@ See README.md on the Github page for full description of features
                     var dt = new Date()
                     dt = dt.addHours(-(dt.getTimezoneOffset() / 60));
                     return ret.then(function(e) {
+                        feedPage[n] = t[1] && n in feedPage ? ++feedPage[n] : 1;
                         e.contents.forEach(share => {
+                            share.data = {
+                                rpctype: share.type,
+                                page: feedPage[n],
+                            }
                             switch(n) {
                                 case "gethierarchicalstrip":
                                 case "gethistoricalstrip":
@@ -953,6 +1023,12 @@ See README.md on the Github page for full description of features
 
                                         setUserStats(share.userprofile, dt);
 
+                                        /*
+                                        share.rpc = {
+                                            type: share.type
+                                        };
+                                        //*/
+
                                         args.belowThresholds = (!repPerDayThreshold || user.repPerDay <= repPerDayThreshold) &&
                                             (!upvotesPerPostThreshold || user.upvotesPerPost <= upvotesPerPostThreshold);
 
@@ -969,12 +1045,12 @@ See README.md on the Github page for full description of features
                                         if (!args.belowThresholds || ignore || filtered) {
                                             if (debughiddenfeedcontent) {
                                                 args.share.deleted = true;
-                                                args.share.deleteReasons = [];
-                                                if (!args.belowThresholds) args.share.deleteReasons.push("Exceeded thresholds");
-                                                if (ignore) args.share.deleteReasons.push("Address ignore list");
-                                                if (filtered) args.share.deleteReasons.push(feedFilterParam.name);
+                                                args.share.data.deleteReasons = [];
+                                                if (!args.belowThresholds) args.share.data.deleteReasons.push("Exceeded thresholds");
+                                                if (ignore) args.share.data.deleteReasons.push("Address ignore list");
+                                                if (filtered) args.share.data.deleteReasons.push(feedFilterParam.name);
                                             } else {
-                                                args.share.dorkynuke = true;
+                                                args.share.data.dorkynuke = true;
                                             }
                                         }
                                     }
