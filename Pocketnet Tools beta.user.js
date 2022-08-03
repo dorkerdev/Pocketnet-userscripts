@@ -192,6 +192,12 @@ See README.md on the Github page for full description of features
             value: false,
         },
         {
+            name: "Nuclear block removal",
+            id: "deleteblockedcomments",
+            type: "BOOLEAN",
+            value: false,
+        },
+        {
             name: "Rep per day threshold",
             id: "repperdaythreshold",
             type: "STRINGANY",
@@ -335,10 +341,13 @@ See README.md on the Github page for full description of features
                         $(el).find("div.commentmessage").prepend(`<a target="_blank" href="post?s=${shareId}&commentid=${commentId}">[link] </a>`);
                     });
                     break;
+                case "groupshares":
+                    e.el.find("div.share.share_common.hidden").removeClass("hidden");
+                    e.el.find("div.showmorebyauthor").remove();
                 case "share":
                 case "sharearticle":
                     {
-                        if (e.data.share.deleted) {
+                        if (e.data.share?.deleted) {
                             /*
                             function moveProperty(source, dest, prop) {
                                 dest[prop] = source[prop];
@@ -823,39 +832,55 @@ See README.md on the Github page for full description of features
     /*
     Update page title during navigation and page loads
     */
-    if (getUserSetting("pagetitles")) {
-        (function() {
-            waitUntil(() => app.nav.api.load).then(load => {
-                app.nav.api.load = function(e) {
-                    if (e.history === true) {
-                        window.document.title = `${app.meta.fullname} - ${e.href}`;
-                    }
-                    load(e);
-                }
-            });
-
-            waitUntil(() => app.nav.api.history.openCurrent).then(fn => {
-                app.nav.api.history.openCurrent = function() {
-                    window.document.title = `${app.meta.fullname} - ${history.state.href}`;
-                    fn();
-                }
-            });
-
-            var ps = window.history.pushState;
-            window.history.pushState = function() {
-                window.document.title = `${arguments[1]} - ${arguments[2]}`;
-                //window.document.title = arguments[1] + " - " + arguments[2];
-                ps.apply(history, arguments);
-            }
-
-            var rs = window.history.replaceState;
-            window.history.replaceState = function() {
-                window.document.title = `${arguments[1]} - ${arguments[2]}`;
-                //window.document.title = arguments[1] + " - " + arguments[2];
-                rs.apply(history, arguments);
-            }
-        })();
+    let qparams = null;
+    function updateQueryParams() {
+        qparams = new Proxy(new URLSearchParams(window.location.search), {
+            get: (searchParams, prop) => searchParams.get(prop),
+        });
     }
+
+    let pagetitles = getUserSetting("pagetitles");
+    //if (getUserSetting("pagetitles")) {
+    //(function() {
+    waitUntil(() => app.nav.api.load).then(load => {
+        app.nav.api.load = function(e) {
+            updateQueryParams();
+            if (pagetitles && e.history === true) {
+                window.document.title = `${app.meta.fullname} - ${e.href}`;
+            }
+            load(e);
+        }
+    });
+
+    waitUntil(() => app.nav.api.history.openCurrent).then(fn => {
+        app.nav.api.history.openCurrent = function() {
+            updateQueryParams();
+            if (pagetitles) {
+                window.document.title = `${app.meta.fullname} - ${history.state.href}`;
+            }
+            fn();
+        }
+    });
+
+    var ps = window.history.pushState;
+    window.history.pushState = function() {
+        updateQueryParams();
+        if (pagetitles) {
+            window.document.title = `${arguments[1]} - ${arguments[2]}`;
+        }
+        ps.apply(history, arguments);
+    }
+
+    var rs = window.history.replaceState;
+    window.history.replaceState = function() {
+        updateQueryParams();
+        if (pagetitles) {
+            window.document.title = `${arguments[1]} - ${arguments[2]}`;
+        }
+        rs.apply(history, arguments);
+    }
+    //})();
+    //}
 
     /*
     Removes all traces of donations from comments so that they're sorted
@@ -950,6 +975,31 @@ See README.md on the Github page for full description of features
         return infos;
     }
 
+    function addressBlocked(address) {
+        var blocked = !!app.platform.sdk.users.storage[app.user.address.value].relation(address, "blocking");
+        return blocked;
+    }
+
+    function updateShare(share, dt){
+        if (nowalls || !app.user.address.value) share.s.f = "0";
+
+        share.data = {
+            rpctype: share.type,
+        }
+
+        if (share.lastComment) {
+            if (getUserSetting("deleteblockedcomments") && addressBlocked(share.lastComment.address)) {
+                share.lastComment = null;
+            } else {
+                nukeDonateComment(share.lastComment, noboost);
+            }
+        }
+
+        if (nowalls || !app.user.address.value) share.s.f = "0";
+
+        setUserStats(share.userprofile, dt);
+    }
+
     waitUntil(() => app.api.rpc)
         .then(() => {
 
@@ -967,8 +1017,9 @@ See README.md on the Github page for full description of features
             switch (n) {
                     //case "getboostfeed":
                     //break;
-                    //case "getcomments":
-                    //break;
+                case "getcomments":
+                    if (t?.length > 2) t[2] = 'lol';
+                    break;
             }
 
             /*
@@ -976,6 +1027,9 @@ See README.md on the Github page for full description of features
             handled below
             */
             var ret = oldrpc(n, t, r, o);
+
+            var dt = new Date()
+            dt = dt.addHours(-(dt.getTimezoneOffset() / 60));
 
             /*
             Handle the promise object returned from the original rpc call
@@ -988,28 +1042,56 @@ See README.md on the Github page for full description of features
                     */
                     //return Promise.resolve();
                 case "getcomments":
+                    {
+
+                        return ret.then(function(e) {
+                            e = e.filter(x => {
+                                /*
+                                This code removes comments from blocked users rather than showing
+                                a message with a link to unhide comment. Comment will show if the
+                                query string contains the commentid param in case you navigate
+                                directly to a comment section via URL. Was going to check if the
+                                hidden comment ID was in the query string, but the node doesn't
+                                return the blocked user's comment ID, so this is not possible for
+                                now.
+                                */
+                                ///*
+                                if (addressBlocked(x.address)) {
+                                    var deleteCommentIfBlocked =
+                                        !qparams?.commentid &&
+                                        getUserSetting("deleteblockedcomments");
+                                    if (deleteCommentIfBlocked) return false;
+                                }
+
+                                nukeDonateComment(x, noboost);
+                                return true;
+                            });
+
+                            return Promise.resolve(e);
+                        });
+                    }
+                case "getrawtransactionwithmessagebyid":
                     return ret.then(function(e) {
-                        e.forEach(x => nukeDonateComment(x, noboost));
+                        e.forEach(share => {
+                            updateShare(share, dt);
+                        });
                         return Promise.resolve(e);
                     });
                 case "getprofilefeed":
                 case "gethierarchicalstrip":
                 case "gethistoricalstrip":
-                    var dt = new Date()
-                    dt = dt.addHours(-(dt.getTimezoneOffset() / 60));
                     return ret.then(function(e) {
                         feedPage[n] = t[1] && n in feedPage ? ++feedPage[n] : 1;
                         e.contents.forEach(share => {
-                            share.data = {
-                                rpctype: share.type,
-                                page: feedPage[n],
-                            }
+                            updateShare(share, dt);
+                            share.data.page = feedPage[n];
                             switch(n) {
                                 case "gethierarchicalstrip":
                                 case "gethistoricalstrip":
                                     if (!app.platform.sdk.users.storage[app.user.address.value]
                                         .relation(share.address, "subscribes") || feedfilter){
 
+                                        ///*
                                         var args = {
                                             rpcParams: {
                                                 feedFilter: t[5]
@@ -1018,16 +1100,9 @@ See README.md on the Github page for full description of features
                                             user: share.userprofile,
                                             today: dt
                                         };
+                                        //*/
 
                                         var user = share.userprofile;
-
-                                        setUserStats(share.userprofile, dt);
-
-                                        /*
-                                        share.rpc = {
-                                            type: share.type
-                                        };
-                                        //*/
 
                                         args.belowThresholds = (!repPerDayThreshold || user.repPerDay <= repPerDayThreshold) &&
                                             (!upvotesPerPostThreshold || user.upvotesPerPost <= upvotesPerPostThreshold);
@@ -1042,7 +1117,9 @@ See README.md on the Github page for full description of features
                                             sitemessage(`${feedFilterParam.name}: ${error.message}`);
                                         }
 
-                                        if (!args.belowThresholds || ignore || filtered) {
+                                        var ignoreFilter = (t?.[4]?.length || 0) > 0/* && (t?.[5]?.length || 0) === 0*/;
+
+                                        if ((!ignoreFilter) && (!args.belowThresholds || ignore || filtered)) {
                                             if (debughiddenfeedcontent) {
                                                 args.share.deleted = true;
                                                 args.share.data.deleteReasons = [];
@@ -1057,15 +1134,6 @@ See README.md on the Github page for full description of features
 
                                     break;
                             }
-                        });
-
-                        e.contents.forEach(x => {
-                            nukeDonateComment(x.lastComment, noboost);
-                            /*
-                            Show all walled content
-                            2022-06-25 - autoshow walled content if user is not logged in
-                            */
-                            if (nowalls || !app.user.address.value) x.s.f = "0";
                         });
 
                         return Promise.resolve(e);
