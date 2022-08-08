@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Pocketnet Tools
 // @namespace    http://tampermonkey.net/
-// @version      21
+// @version      22
 // @description  Adds various UI enhancements to the post/content template (see top comment for details)
 // @author       dorker
 // @match        https://bastyon.com/*
@@ -942,12 +942,18 @@ See README.md on the Github page for full description of features
         user.stats = stats;
 
         ///*
+        stats.postcnt = user.postcnt;
+        stats.likers_count = user.likers_count;
+        stats.upvotesPerPost = stats.likers_count / user.postcnt;
         stats.regDateTime = typeof user.regdate.getMonth === "function" ? user.regdate : new Date(user.regdate * 1000);
         stats.accountAgeDays = (dt - stats.regDateTime) / 1000 / 3600 / 24;
 
         stats.repPerDay = user.reputation / stats.accountAgeDays;
-        stats.upvotesPerPost = user.likers_count / user.postcnt;
         stats.postsPerDay = user.postcnt / stats.accountAgeDays;
+    }
+
+    function toLocaleString(number, places) {
+        return number.toLocaleString(undefined, {minimumFractionDigits:places,maximumFractionDigits:places});
     }
 
     function getUserStats(user) {
@@ -963,6 +969,10 @@ See README.md on the Github page for full description of features
                 value: `${Math.trunc(user.stats.accountAgeDays)} days`
             },
             {
+                label: "Total posts",
+                value: toLocaleString(user.postcnt, 0)
+            },
+            {
                 label: "Rep/day",
                 value: (user.stats.repPerDay).toFixed(2)
             },
@@ -971,6 +981,18 @@ See README.md on the Github page for full description of features
                 value: (user.stats.postsPerDay).toFixed(2)
             }
         ];
+
+        if (user.stats.likers_count) {
+            infos.push(
+            {
+                label: "Total upvotes",
+                value: toLocaleString(user.stats.likers_count, 0)
+            });
+            infos.push({
+                label: "Upvotes/post",
+                value: toLocaleString(user.stats.upvotesPerPost, 2)
+            });
+        }
 
         return infos;
     }
