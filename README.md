@@ -47,7 +47,7 @@ When uploading images, Bastyon's proprietary image resizer scales your image dow
 #### Show additional user stats
 Enable to display additional user stats in the header of all posts and  in the user profile sidebar
 
-![pn user stats feed](https://user-images.githubusercontent.com/89675012/177215012-fc8a8199-b5e9-45cf-b822-46b3c273f071.PNG)  
+![pn user stats feed](https://user-images.githubusercontent.com/89675012/184028064-831673ac-0dc9-4eb3-82ce-dfed0aa9908f.PNG)  
 <sup>User stats in post header</sup>
 
 ![pn user stats profile](https://user-images.githubusercontent.com/89675012/177215013-fd8bcf1a-8f7e-4789-9c0e-8da976b1c03e.PNG)  
