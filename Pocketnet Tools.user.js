@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Pocketnet Tools
 // @namespace    http://tampermonkey.net/
-// @version      20
+// @version      22
 // @description  Adds various UI enhancements to the post/content template (see top comment for details)
 // @author       dorker
 // @match        https://bastyon.com/*
@@ -155,7 +155,7 @@ See README.md on the Github page for full description of features
             value: false,
         },
         {
-            name: "Add comment sidebar link",
+            name: "Comment sidebar enhancements",
             id: "commentsidebarlink",
             type: "BOOLEAN",
             value: true,
@@ -188,6 +188,12 @@ See README.md on the Github page for full description of features
         {
             name: "Show walled content",
             id: "nowalls",
+            type: "BOOLEAN",
+            value: false,
+        },
+        {
+            name: "Nuclear block removal",
+            id: "deleteblockedcomments",
             type: "BOOLEAN",
             value: false,
         },
@@ -261,7 +267,7 @@ See README.md on the Github page for full description of features
 
             switch(n.name) {
                 case "groupshares":
-                    n.data.shares = n.data.shares.filter(x=> !x.dorkynuke);
+                    n.data.shares = n.data.shares.filter(x=> !x.data?.dorkynuke);
                     //if (!!n.data.share.dorkynuke) return "";
                     break;
             }
@@ -272,6 +278,33 @@ See README.md on the Github page for full description of features
         x.insertTemplate = function(e, a) {
             var ret = insertTemplate(e, a);
             //console.log(e.name);
+            /*
+            authorcaption
+            best
+            body
+            categories
+            graph
+            groupshares
+            images
+            index
+            info
+            lastcommentslist
+            lastprice
+            lenta
+            list
+            menu
+            post
+            postline
+            repost
+            settings
+            share
+            sharearticle
+            shares
+            sharevideolight
+            stars
+            tags
+            url
+            */
             switch(e.name){
                 case "index":
                     switch(e.id){
@@ -300,22 +333,42 @@ See README.md on the Github page for full description of features
                     */
                     if (!getUserSetting("commentsidebarlink")) break;
 
+                    e.el.find("div.icons").remove();
+
                     e.el.find("div.lastcommentslist > div.commentgroup").each((i,el) => {
                         var shareId = el.attributes["share"].value;
                         var commentId = $(el).find("div.comment").prop("id");
                         $(el).find("div.commentmessage").prepend(`<a target="_blank" href="post?s=${shareId}&commentid=${commentId}">[link] </a>`);
                     });
                     break;
+                case "groupshares":
+                    e.el.find("div.share.share_common.hidden").removeClass("hidden");
+                    e.el.find("div.showmorebyauthor").remove();
                 case "share":
                 case "sharearticle":
                     {
-                        if (e.data.share.deleted) {
+                        if (e.data.share?.deleted) {
+                            /*
+                            function moveProperty(source, dest, prop) {
+                                dest[prop] = source[prop];
+                                delete source[prop];
+                            }
+
+                            function dumpObject(source, dest, objProp) {
+                                for(var i in source[objProp]) {
+                                    dest[i] = source[objProp][i];
+                                }
+
+                                delete source[objProp];
+                            }
+                            //*/
+
                             var clone = { share: e.data.share };
                             clone.userprofile = clone.share.userprofile;
                             clone.userstats = clone.userprofile.stats;
                             delete clone.share.userprofile;
 
-                            var htmlReasons = `<div>Content removed by userscript</div><ul>${Array.from(e.data.share.deleteReasons.map(x=> `<li>${x}</li>`)).join("")}</ul>`;
+                            var htmlReasons = `<div>Content removed by userscript</div><ul>${Array.from(e.data.share.data?.deleteReasons?.map(x=> `<li>${x}</li>`)).join("")}</ul>`;
                             var elInfo = $(`<div style='height: 200px;overflow-wrap: break-word; overflow-y: hidden'></div>`);
 
                             elInfo.click(e => {
@@ -371,6 +424,7 @@ See README.md on the Github page for full description of features
                                     var header = e.el.find("div.authorTable > div.sys");
 
                                     function addMetadata(label, value) {
+                                        if (!value) return;
                                         header.append(`<div><span>${label}: ${value};</span></div>`)
                                     }
 
@@ -379,6 +433,8 @@ See README.md on the Github page for full description of features
                                     var stats = getUserStats(e.data.share.userprofile);
 
                                     stats.forEach(x=> addMetadata(x.label, x.value));
+
+                                    addMetadata("Page", e.data.share?.data?.page);
                                 }
 
                                 /*
@@ -472,17 +528,24 @@ See README.md on the Github page for full description of features
         }
     })
 
+    false && waitUntil(() => jQuery.event.add).then(function(e) {
+        var _event = jQuery.event.add;
+
+        jQuery.event.add = function(elem, types, handler, data, selector) {
+            _event.apply(this, arguments);
+        }
+    });
+
     /*
     Override the global event dispatcher so that we can intercept events
     to add additional functionality. Disabled for now
     */
-    !!0 && waitUntil(() => jQuery.event.dispatch).then(function(e) {
+    false && waitUntil(() => jQuery.event.dispatch).then(function(e) {
         var _event = jQuery.event.dispatch;
 
-        //jQuery.event.add = function( elem, types, handler, data, selector ) {
         jQuery.event.dispatch = function( nativeEvent ) {
             var elem = nativeEvent.srcElement;
-
+            //console.log(elem);
             function eventMatches(sel, events) {
                 var match = elem && elem.matches(sel) &&
                     nativeEvent.type === events;
@@ -517,9 +580,11 @@ See README.md on the Github page for full description of features
         var __import = x._import;
         x._import = function(e) {
             __import(e);
+            //x.rpc = e.rpc;
+            x.data = e.data;
             x.userprofile = e.userprofile;
-            x.dorkynuke = e.dorkynuke;
-            x.deleteReasons = e.deleteReasons;
+            //x.dorkynuke = e.dorkynuke;
+            //x.deleteReasons = e.deleteReasons;
         }
 
         return x;
@@ -767,39 +832,55 @@ See README.md on the Github page for full description of features
     /*
     Update page title during navigation and page loads
     */
-    if (getUserSetting("pagetitles")) {
-        (function() {
-            waitUntil(() => app.nav.api.load).then(load => {
-                app.nav.api.load = function(e) {
-                    if (e.history === true) {
-                        window.document.title = `${app.meta.fullname} - ${e.href}`;
-                    }
-                    load(e);
-                }
-            });
-
-            waitUntil(() => app.nav.api.history.openCurrent).then(fn => {
-                app.nav.api.history.openCurrent = function() {
-                    window.document.title = `${app.meta.fullname} - ${history.state.href}`;
-                    fn();
-                }
-            });
-
-            var ps = window.history.pushState;
-            window.history.pushState = function() {
-                window.document.title = `${arguments[1]} - ${arguments[2]}`;
-                //window.document.title = arguments[1] + " - " + arguments[2];
-                ps.apply(history, arguments);
-            }
-
-            var rs = window.history.replaceState;
-            window.history.replaceState = function() {
-                window.document.title = `${arguments[1]} - ${arguments[2]}`;
-                //window.document.title = arguments[1] + " - " + arguments[2];
-                rs.apply(history, arguments);
-            }
-        })();
+    let qparams = null;
+    function updateQueryParams() {
+        qparams = new Proxy(new URLSearchParams(window.location.search), {
+            get: (searchParams, prop) => searchParams.get(prop),
+        });
     }
+
+    let pagetitles = getUserSetting("pagetitles");
+    //if (getUserSetting("pagetitles")) {
+    //(function() {
+    waitUntil(() => app.nav.api.load).then(load => {
+        app.nav.api.load = function(e) {
+            updateQueryParams();
+            if (pagetitles && e.history === true) {
+                window.document.title = `${app.meta.fullname} - ${e.href}`;
+            }
+            load(e);
+        }
+    });
+
+    waitUntil(() => app.nav.api.history.openCurrent).then(fn => {
+        app.nav.api.history.openCurrent = function() {
+            updateQueryParams();
+            if (pagetitles) {
+                window.document.title = `${app.meta.fullname} - ${history.state.href}`;
+            }
+            fn();
+        }
+    });
+
+    var ps = window.history.pushState;
+    window.history.pushState = function() {
+        updateQueryParams();
+        if (pagetitles) {
+            window.document.title = `${arguments[1]} - ${arguments[2]}`;
+        }
+        ps.apply(history, arguments);
+    }
+
+    var rs = window.history.replaceState;
+    window.history.replaceState = function() {
+        updateQueryParams();
+        if (pagetitles) {
+            window.document.title = `${arguments[1]} - ${arguments[2]}`;
+        }
+        rs.apply(history, arguments);
+    }
+    //})();
+    //}
 
     /*
     Removes all traces of donations from comments so that they're sorted
@@ -831,11 +912,19 @@ See README.md on the Github page for full description of features
     waitUntil(() => app.platform.sdk.node.transactions.create.common).then(common => {
         var _common = app.platform.sdk.node.transactions.create.common;
         app.platform.sdk.node.transactions.create.common = function(p) {
-            if (arguments[1] instanceof UserInfo) {
-                let aboutarr = arguments[1].about.v.split("--img:");
-                if (aboutarr.length === 2) {
-                    arguments[1].image.v = aboutarr[1];
-                    arguments[1].about.v = aboutarr[0].trim();
+            var obj = arguments[1];
+            if (obj instanceof UserInfo) {
+                let arr = obj.about.v.split("--img:");
+                if (arr.length === 2) {
+                    obj.image.v = arr[1];
+                    obj.about.v = arr[0].trim();
+                }
+            } else if (obj instanceof Comment) {
+                let arr = obj.message.v.split("--img:");
+                if (arr.length === 2) {
+                    let images = arr[1].split("\n").filter(x => x);
+                    obj.images.v = images;
+                    obj.message.v = arr[0].trim();
                 }
             }
             _common.apply(this, arguments)
@@ -853,12 +942,18 @@ See README.md on the Github page for full description of features
         user.stats = stats;
 
         ///*
+        stats.postcnt = user.postcnt;
+        stats.likers_count = user.likers_count;
+        stats.upvotesPerPost = stats.likers_count / user.postcnt;
         stats.regDateTime = typeof user.regdate.getMonth === "function" ? user.regdate : new Date(user.regdate * 1000);
         stats.accountAgeDays = (dt - stats.regDateTime) / 1000 / 3600 / 24;
 
         stats.repPerDay = user.reputation / stats.accountAgeDays;
-        stats.upvotesPerPost = user.likers_count / user.postcnt;
         stats.postsPerDay = user.postcnt / stats.accountAgeDays;
+    }
+
+    function toLocaleString(number, places) {
+        return number.toLocaleString(undefined, {minimumFractionDigits:places,maximumFractionDigits:places});
     }
 
     function getUserStats(user) {
@@ -874,6 +969,10 @@ See README.md on the Github page for full description of features
                 value: `${Math.trunc(user.stats.accountAgeDays)} days`
             },
             {
+                label: "Total posts",
+                value: toLocaleString(user.postcnt, 0)
+            },
+            {
                 label: "Rep/day",
                 value: (user.stats.repPerDay).toFixed(2)
             },
@@ -883,7 +982,44 @@ See README.md on the Github page for full description of features
             }
         ];
 
+        if (user.stats.likers_count) {
+            infos.push(
+            {
+                label: "Total upvotes",
+                value: toLocaleString(user.stats.likers_count, 0)
+            });
+            infos.push({
+                label: "Upvotes/post",
+                value: toLocaleString(user.stats.upvotesPerPost, 2)
+            });
+        }
+
         return infos;
+    }
+
+    function addressBlocked(address) {
+        var blocked = !!app.platform.sdk.users.storage[app.user.address.value].relation(address, "blocking");
+        return blocked;
+    }
+
+    function updateShare(share, dt){
+        if (nowalls || !app.user.address.value) share.s.f = "0";
+
+        share.data = {
+            rpctype: share.type,
+        }
+
+        if (share.lastComment) {
+            if (getUserSetting("deleteblockedcomments") && addressBlocked(share.lastComment.address)) {
+                share.lastComment = null;
+            } else {
+                nukeDonateComment(share.lastComment, noboost);
+            }
+        }
+
+        if (nowalls || !app.user.address.value) share.s.f = "0";
+
+        setUserStats(share.userprofile, dt);
     }
 
     waitUntil(() => app.api.rpc)
@@ -893,6 +1029,7 @@ See README.md on the Github page for full description of features
         Override the rpc function with one of our own
         */
         var oldrpc = app.api.rpc;
+        let feedPage = {};
         app.api.rpc = function(n, t, r, o) {
 
             /*
@@ -902,8 +1039,9 @@ See README.md on the Github page for full description of features
             switch (n) {
                     //case "getboostfeed":
                     //break;
-                    //case "getcomments":
-                    //break;
+                case "getcomments":
+                    if (t?.length > 2) t[2] = 'lol';
+                    break;
             }
 
             /*
@@ -911,6 +1049,9 @@ See README.md on the Github page for full description of features
             handled below
             */
             var ret = oldrpc(n, t, r, o);
+
+            var dt = new Date()
+            dt = dt.addHours(-(dt.getTimezoneOffset() / 60));
 
             /*
             Handle the promise object returned from the original rpc call
@@ -923,23 +1064,56 @@ See README.md on the Github page for full description of features
                     */
                     //return Promise.resolve();
                 case "getcomments":
+                    {
+
+                        return ret.then(function(e) {
+                            e = e.filter(x => {
+                                /*
+                                This code removes comments from blocked users rather than showing
+                                a message with a link to unhide comment. Comment will show if the
+                                query string contains the commentid param in case you navigate
+                                directly to a comment section via URL. Was going to check if the
+                                hidden comment ID was in the query string, but the node doesn't
+                                return the blocked user's comment ID, so this is not possible for
+                                now.
+                                */
+                                ///*
+                                if (addressBlocked(x.address)) {
+                                    var deleteCommentIfBlocked =
+                                        !qparams?.commentid &&
+                                        getUserSetting("deleteblockedcomments");
+                                    if (deleteCommentIfBlocked) return false;
+                                }
+
+                                nukeDonateComment(x, noboost);
+                                return true;
+                            });
+
+                            return Promise.resolve(e);
+                        });
+                    }
+                case "getrawtransactionwithmessagebyid":
                     return ret.then(function(e) {
-                        e.forEach(x => nukeDonateComment(x, noboost));
+                        e.forEach(share => {
+                            updateShare(share, dt);
+                        });
                         return Promise.resolve(e);
                     });
                 case "getprofilefeed":
                 case "gethierarchicalstrip":
                 case "gethistoricalstrip":
-                    var dt = new Date()
-                    dt = dt.addHours(-(dt.getTimezoneOffset() / 60));
                     return ret.then(function(e) {
+                        feedPage[n] = t[1] && n in feedPage ? ++feedPage[n] : 1;
                         e.contents.forEach(share => {
+                            updateShare(share, dt);
+                            share.data.page = feedPage[n];
                             switch(n) {
                                 case "gethierarchicalstrip":
                                 case "gethistoricalstrip":
                                     if (!app.platform.sdk.users.storage[app.user.address.value]
                                         .relation(share.address, "subscribes") || feedfilter){
 
+                                        ///*
                                         var args = {
                                             rpcParams: {
                                                 feedFilter: t[5]
@@ -948,10 +1122,9 @@ See README.md on the Github page for full description of features
                                             user: share.userprofile,
                                             today: dt
                                         };
+                                        //*/
 
                                         var user = share.userprofile;
-
-                                        setUserStats(share.userprofile, dt);
 
                                         args.belowThresholds = (!repPerDayThreshold || user.repPerDay <= repPerDayThreshold) &&
                                             (!upvotesPerPostThreshold || user.upvotesPerPost <= upvotesPerPostThreshold);
@@ -966,30 +1139,23 @@ See README.md on the Github page for full description of features
                                             sitemessage(`${feedFilterParam.name}: ${error.message}`);
                                         }
 
-                                        if (!args.belowThresholds || ignore || filtered) {
+                                        var ignoreFilter = (t?.[4]?.length || 0) > 0/* && (t?.[5]?.length || 0) === 0*/;
+
+                                        if ((!ignoreFilter) && (!args.belowThresholds || ignore || filtered)) {
                                             if (debughiddenfeedcontent) {
                                                 args.share.deleted = true;
-                                                args.share.deleteReasons = [];
-                                                if (!args.belowThresholds) args.share.deleteReasons.push("Exceeded thresholds");
-                                                if (ignore) args.share.deleteReasons.push("Address ignore list");
-                                                if (filtered) args.share.deleteReasons.push(feedFilterParam.name);
+                                                args.share.data.deleteReasons = [];
+                                                if (!args.belowThresholds) args.share.data.deleteReasons.push("Exceeded thresholds");
+                                                if (ignore) args.share.data.deleteReasons.push("Address ignore list");
+                                                if (filtered) args.share.data.deleteReasons.push(feedFilterParam.name);
                                             } else {
-                                                args.share.dorkynuke = true;
+                                                args.share.data.dorkynuke = true;
                                             }
                                         }
                                     }
 
                                     break;
                             }
-                        });
-
-                        e.contents.forEach(x => {
-                            nukeDonateComment(x.lastComment, noboost);
-                            /*
-                            Show all walled content
-                            2022-06-25 - autoshow walled content if user is not logged in
-                            */
-                            if (nowalls || !app.user.address.value) x.s.f = "0";
                         });
 
                         return Promise.resolve(e);
