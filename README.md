@@ -55,6 +55,17 @@ Enable to display additional user stats in the header of all posts and  in the u
 
 #### Show Walled Content
 Enabling this will allow you to view content that is locked behind a login or membership wall. In theory, you will also be able to rate/comment on the content, though I haven't tested that
+#### Nuclear block removal
+Removes all comments from blocked users so that you don't even see the "comment hidden" message.  
+
+![image](https://user-images.githubusercontent.com/89675012/185796343-dccd4371-8e25-4902-95fc-33109693c299.png)
+
+#### Remove verified badges
+Removes all verified checkmarks in user profiles, feeds, or anywhere they show up.  
+![screencap 20220821_1100161791AM](https://user-images.githubusercontent.com/89675012/185797422-57778947-5dbc-480b-88eb-49b31133cdb5.png)
+![screencap 20220821_1101470633AM](https://user-images.githubusercontent.com/89675012/185797428-a73e2190-2f76-41de-a6cf-ec84388722d5.png)
+
+
 #### Thresholds 
 Used to hide accounts that have excessive post/vote metrics. Useful for coping with bot attacks (currently eye bots)
   - Rep per day threshold: Hides all posts from accounts that exceed the average rep per day that you configure. Leave blank to disable. I use 20 myself
