@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Pocketnet Tools
 // @namespace    http://tampermonkey.net/
-// @version      22
+// @version      23
 // @description  Adds various UI enhancements to the post/content template (see top comment for details)
 // @author       dorker
 // @match        https://bastyon.com/*
@@ -110,6 +110,10 @@ See README.md on the Github page for full description of features
     function appendVote(el, vote) {
         var elVote = document.createElement("div");
         elVote.innerHTML = `<a target="_blank" href="${vote.address}">${decodeURIComponent(vote.name)} (${(vote.reputation/10).toLocaleString()})</a>: ${vote.value}`;
+        if (addressBlocked(vote.address)) {
+            elVote.style.color = 'red';
+            elVote.style.fontStyle = 'italic';
+        }
         el.appendChild(elVote);
     }
 
@@ -198,6 +202,12 @@ See README.md on the Github page for full description of features
             value: false,
         },
         {
+            name: "Remove verified badges",
+            id: "removereal",
+            type: "BOOLEAN",
+            value: false,
+        },
+        {
             name: "Rep per day threshold",
             id: "repperdaythreshold",
             type: "STRINGANY",
@@ -230,17 +240,37 @@ See README.md on the Github page for full description of features
         //*/
     ];
 
+    waitUntil(() => app.platform.__getSettingsMeta).then(()=> {
+        var old__getSettingsMeta = app.platform.__getSettingsMeta;
+        app.platform.__getSettingsMeta = function() {
+            var meta = old__getSettingsMeta();
+            configParams.forEach(p => {
+                meta[p.id] = p;
+            });
+            return meta;
+        }
+    });
+
+    function initSettings() {
+    }
+
     var _settingsInitialized = false;
     function getUserSetting(key) {
         if (!_settingsInitialized) {
+            /*
             configParams.forEach(p => {
                 app.platform.sdk.usersettings.meta[p.id] = p;
             });
+            //*/
             app.platform.sdk.usersettings.init();
             _settingsInitialized = true;
         }
 
-        return app.platform.sdk.usersettings.meta[key].value;
+        try {
+            return app.platform.sdk.usersettings.meta[key].value;
+        } catch(ex) {
+            return null;
+        }
     }
 
     window.nModuleBase = function() {
@@ -1111,7 +1141,7 @@ See README.md on the Github page for full description of features
                                 case "gethierarchicalstrip":
                                 case "gethistoricalstrip":
                                     if (!app.platform.sdk.users.storage[app.user.address.value]
-                                        .relation(share.address, "subscribes") || feedfilter){
+                                        .relation(share.address, "subscribes") || feedFilter){
 
                                         ///*
                                         var args = {
@@ -1165,6 +1195,14 @@ See README.md on the Github page for full description of features
             }
         };
     });
+
+    if (getUserSetting("removereal")) {
+        waitUntil(() => app.platform.ui.usertype).then(x=> {
+            app.platform.ui.usertype = function(e) {
+                return app.platform.sdk.usersl.storage[e] && app.platform.sdk.usersl.storage[e].dev ? "dev" : "";
+            }
+        });
+    }
 
     //utilities
     function arrayIncludes(arr, value) {
