@@ -452,10 +452,12 @@ See README.md on the Github page for full description of features
                             case "share":
                                 if (getUserSetting("userstats")) {
                                     var header = e.el.find("div.authorTable > div.sys");
+                                    var metricsContainer = $("<div class='postMetrics'></div>");
+                                    header.append(metricsContainer);
 
                                     function addMetadata(label, value) {
                                         if (!value) return;
-                                        header.append(`<div><span>${label}: ${value};</span></div>`)
+                                        metricsContainer.append(`<div><span>${label}: ${value};</span></div>`)
                                     }
 
                                     addMetadata("Feed", e.data.share.language);
@@ -476,14 +478,14 @@ See README.md on the Github page for full description of features
 
                                 metaHead.attr("style", "width: 1px!important");
                                 metaHead.attr("style", "textAlign: right");
-                                metaHead.prepend(`<a href="post?s=${e.data.share.txid}" style="paddingRight = 10px" target="_blank">permalink<a>`);
+                                metaHead.prepend(`<a class='postPermalink' href="post?s=${e.data.share.txid}" style="paddingRight = 10px" target="_blank">permalink<a>`);
 
                                 /*
                                 Adds "Show votes" button
                                 */
                                 if (getUserSetting("showvotes")) {
                                     var panel = e.el.find("div.panel.sharepanel");
-                                    var container = $("<div style=\"text-align:right\"></div>");
+                                    var container = $("<div class='showVotesContainer' style=\"text-align:right\"></div>");
                                     var link = $("<input type=\"button\" value=\"Show votes\" />")
 
                                     container.append(link);
@@ -716,6 +718,12 @@ See README.md on the Github page for full description of features
                 sheet.insertRule("#main:not(.videomain) .lentacell { margin-left: 0 }",0);
             });
         }
+
+        waitUntil(() => sdk.node.shares.gettopfeed).then(() => {
+            sdk.node.shares.gettopfeed = function(x,y,z) {
+                return null;
+            };
+        });
 
         waitUntil(() => sdk.usersettings.createall).then(() => {
             var createall = sdk.usersettings.createall;
@@ -1052,6 +1060,20 @@ See README.md on the Github page for full description of features
         setUserStats(share.userprofile, dt);
     }
 
+    function GetURLParameter(sParam)
+    {
+        var sPageURL = window.location.search.substring(1);
+        var sURLVariables = sPageURL.split('&');
+        for (var i = 0; i < sURLVariables.length; i++)
+        {
+            var sParameterName = sURLVariables[i].split('=');
+            if (sParameterName[0] == sParam)
+            {
+                return sParameterName[1];
+            }
+        }
+    }
+
     waitUntil(() => app.api.rpc)
         .then(() => {
 
@@ -1061,6 +1083,25 @@ See README.md on the Github page for full description of features
         var oldrpc = app.api.rpc;
         let feedPage = {};
         app.api.rpc = function(n, t, r, o) {
+            //console.log(n);
+            /*
+			getuserstate
+			getuserprofile
+			txunspent
+			getprofilefeed
+			getnodeinfo
+			gettags
+			getaccountsetting
+			getpagescores
+			gethistoricalstrip
+			getlastcomments
+			gethotposts
+			getrawtransactionwithmessagebyid
+			getsubscribesfeed
+			getcomments
+			getrecommendedcontentbyaddress
+			gettopfeed
+			*/
 
             /*
             Execute code before the rpc method is even called. Useful for modifying
@@ -1069,6 +1110,10 @@ See README.md on the Github page for full description of features
             switch (n) {
                     //case "getboostfeed":
                     //break;
+                case "getactivities":
+                    var user = GetURLParameter("user");
+                    if (user) t[0] = user;
+                    break;
                 case "getcomments":
                     if (t?.length > 2) t[2] = 'lol';
                     break;
