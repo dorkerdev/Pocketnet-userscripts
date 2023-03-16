@@ -137,14 +137,14 @@ See README.md on the Github page for full description of features
             name: "Enable page titles",
             id: "pagetitles",
             type: "BOOLEAN",
-            value: false,
+            value: true,
         },
         //*/
         {
             name: "Bastyhax",
             id: "uncuck",
             type: "BOOLEAN",
-            value: false,
+            value: true,
         },
         {
             name: "Show block message",
@@ -156,7 +156,7 @@ See README.md on the Github page for full description of features
             name: "Show blocked profile content",
             id: "showblockedprofilecontent",
             type: "BOOLEAN",
-            value: false,
+            value: true,
         },
         {
             name: "Comment sidebar enhancements",
@@ -187,13 +187,13 @@ See README.md on the Github page for full description of features
             name: "Show additional user stats",
             id: "userstats",
             type: "BOOLEAN",
-            value: false,
+            value: true,
         },
         {
             name: "Show walled content",
             id: "nowalls",
             type: "BOOLEAN",
-            value: false,
+            value: true,
         },
         {
             name: "Nuclear block removal",
