@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Pocketnet Tools
 // @namespace    http://tampermonkey.net/
-// @version      22
+// @version      23
 // @description  Adds various UI enhancements to the post/content template (see top comment for details)
 // @author       dorker
 // @match        https://bastyon.com/*
@@ -110,6 +110,10 @@ See README.md on the Github page for full description of features
     function appendVote(el, vote) {
         var elVote = document.createElement("div");
         elVote.innerHTML = `<a target="_blank" href="${vote.address}">${decodeURIComponent(vote.name)} (${(vote.reputation/10).toLocaleString()})</a>: ${vote.value}`;
+        if (addressBlocked(vote.address)) {
+            elVote.style.color = 'red';
+            elVote.style.fontStyle = 'italic';
+        }
         el.appendChild(elVote);
     }
 
@@ -133,14 +137,14 @@ See README.md on the Github page for full description of features
             name: "Enable page titles",
             id: "pagetitles",
             type: "BOOLEAN",
-            value: false,
+            value: true,
         },
         //*/
         {
             name: "Bastyhax",
             id: "uncuck",
             type: "BOOLEAN",
-            value: false,
+            value: true,
         },
         {
             name: "Show block message",
@@ -152,7 +156,7 @@ See README.md on the Github page for full description of features
             name: "Show blocked profile content",
             id: "showblockedprofilecontent",
             type: "BOOLEAN",
-            value: false,
+            value: true,
         },
         {
             name: "Comment sidebar enhancements",
@@ -183,17 +187,23 @@ See README.md on the Github page for full description of features
             name: "Show additional user stats",
             id: "userstats",
             type: "BOOLEAN",
-            value: false,
+            value: true,
         },
         {
             name: "Show walled content",
             id: "nowalls",
             type: "BOOLEAN",
-            value: false,
+            value: true,
         },
         {
             name: "Nuclear block removal",
             id: "deleteblockedcomments",
+            type: "BOOLEAN",
+            value: false,
+        },
+        {
+            name: "Remove verified badges",
+            id: "removereal",
             type: "BOOLEAN",
             value: false,
         },
@@ -230,17 +240,37 @@ See README.md on the Github page for full description of features
         //*/
     ];
 
+    waitUntil(() => app.platform.__getSettingsMeta).then(()=> {
+        var old__getSettingsMeta = app.platform.__getSettingsMeta;
+        app.platform.__getSettingsMeta = function() {
+            var meta = old__getSettingsMeta();
+            configParams.forEach(p => {
+                meta[p.id] = p;
+            });
+            return meta;
+        }
+    });
+
+    function initSettings() {
+    }
+
     var _settingsInitialized = false;
     function getUserSetting(key) {
         if (!_settingsInitialized) {
+            /*
             configParams.forEach(p => {
                 app.platform.sdk.usersettings.meta[p.id] = p;
             });
+            //*/
             app.platform.sdk.usersettings.init();
             _settingsInitialized = true;
         }
 
-        return app.platform.sdk.usersettings.meta[key].value;
+        try {
+            return app.platform.sdk.usersettings.meta[key].value;
+        } catch(ex) {
+            return null;
+        }
     }
 
     window.nModuleBase = function() {
@@ -422,10 +452,12 @@ See README.md on the Github page for full description of features
                             case "share":
                                 if (getUserSetting("userstats")) {
                                     var header = e.el.find("div.authorTable > div.sys");
+                                    var metricsContainer = $("<div class='postMetrics'></div>");
+                                    header.append(metricsContainer);
 
                                     function addMetadata(label, value) {
                                         if (!value) return;
-                                        header.append(`<div><span>${label}: ${value};</span></div>`)
+                                        metricsContainer.append(`<div><span>${label}: ${value};</span></div>`)
                                     }
 
                                     addMetadata("Feed", e.data.share.language);
@@ -446,14 +478,14 @@ See README.md on the Github page for full description of features
 
                                 metaHead.attr("style", "width: 1px!important");
                                 metaHead.attr("style", "textAlign: right");
-                                metaHead.prepend(`<a href="post?s=${e.data.share.txid}" style="paddingRight = 10px" target="_blank">permalink<a>`);
+                                metaHead.prepend(`<a class='postPermalink' href="post?s=${e.data.share.txid}" style="paddingRight = 10px" target="_blank">permalink<a>`);
 
                                 /*
                                 Adds "Show votes" button
                                 */
                                 if (getUserSetting("showvotes")) {
                                     var panel = e.el.find("div.panel.sharepanel");
-                                    var container = $("<div style=\"text-align:right\"></div>");
+                                    var container = $("<div class='showVotesContainer' style=\"text-align:right\"></div>");
                                     var link = $("<input type=\"button\" value=\"Show votes\" />")
 
                                     container.append(link);
@@ -686,6 +718,12 @@ See README.md on the Github page for full description of features
                 sheet.insertRule("#main:not(.videomain) .lentacell { margin-left: 0 }",0);
             });
         }
+
+        waitUntil(() => sdk.node.shares.gettopfeed).then(() => {
+            sdk.node.shares.gettopfeed = function(x,y,z) {
+                return null;
+            };
+        });
 
         waitUntil(() => sdk.usersettings.createall).then(() => {
             var createall = sdk.usersettings.createall;
@@ -1022,6 +1060,20 @@ See README.md on the Github page for full description of features
         setUserStats(share.userprofile, dt);
     }
 
+    function GetURLParameter(sParam)
+    {
+        var sPageURL = window.location.search.substring(1);
+        var sURLVariables = sPageURL.split('&');
+        for (var i = 0; i < sURLVariables.length; i++)
+        {
+            var sParameterName = sURLVariables[i].split('=');
+            if (sParameterName[0] == sParam)
+            {
+                return sParameterName[1];
+            }
+        }
+    }
+
     waitUntil(() => app.api.rpc)
         .then(() => {
 
@@ -1031,6 +1083,25 @@ See README.md on the Github page for full description of features
         var oldrpc = app.api.rpc;
         let feedPage = {};
         app.api.rpc = function(n, t, r, o) {
+            //console.log(n);
+            /*
+			getuserstate
+			getuserprofile
+			txunspent
+			getprofilefeed
+			getnodeinfo
+			gettags
+			getaccountsetting
+			getpagescores
+			gethistoricalstrip
+			getlastcomments
+			gethotposts
+			getrawtransactionwithmessagebyid
+			getsubscribesfeed
+			getcomments
+			getrecommendedcontentbyaddress
+			gettopfeed
+			*/
 
             /*
             Execute code before the rpc method is even called. Useful for modifying
@@ -1039,6 +1110,10 @@ See README.md on the Github page for full description of features
             switch (n) {
                     //case "getboostfeed":
                     //break;
+                case "getactivities":
+                    var user = GetURLParameter("user");
+                    if (user) t[0] = user;
+                    break;
                 case "getcomments":
                     if (t?.length > 2) t[2] = 'lol';
                     break;
@@ -1111,7 +1186,7 @@ See README.md on the Github page for full description of features
                                 case "gethierarchicalstrip":
                                 case "gethistoricalstrip":
                                     if (!app.platform.sdk.users.storage[app.user.address.value]
-                                        .relation(share.address, "subscribes") || feedfilter){
+                                        .relation(share.address, "subscribes") || feedFilter){
 
                                         ///*
                                         var args = {
@@ -1165,6 +1240,14 @@ See README.md on the Github page for full description of features
             }
         };
     });
+
+    if (getUserSetting("removereal")) {
+        waitUntil(() => app.platform.ui.usertype).then(x=> {
+            app.platform.ui.usertype = function(e) {
+                return app.platform.sdk.usersl.storage[e] && app.platform.sdk.usersl.storage[e].dev ? "dev" : "";
+            }
+        });
+    }
 
     //utilities
     function arrayIncludes(arr, value) {
