@@ -35,20 +35,20 @@ being able to block again.
 
 //javascript:(()=>{
 app.api.rpc("getuserprofile", [[app.platform.sdk.address.pnet().address],"0"]).then(d => {
-    const forEachAsPromise = async (items, action) => {
+	const forEachAsPromise = async (items, action) => {
 		for (const item of items) {
-		await action(item)
-	  }
+			await action(item)
+		}
 	};
 	const addrs = prompt("Enter addresses to block, each on its own line")
-        .split("\n")
-        .filter(x => x)
-        .map(x => x.split(":")[0].trim())
-        .filter(x => !d[0].blocking.includes(x));
-    forEachAsPromise(addrs, addr => {
-        app.platform.api.actions.blocking(addr.trim(), function(e,t) {
-            console.log(e || t);
+		.split("\n")
+		.filter(x => x)
+		.map(x => x.split(":")[0].trim())
+		.filter(x => !d[0].blocking.includes(x));
+	forEachAsPromise(addrs, addr => {
+		app.platform.api.actions.blocking(addr.trim(), function(e,t) {
+			console.log(e || t);
 		});
-    });
+	});
 });
 //})()
