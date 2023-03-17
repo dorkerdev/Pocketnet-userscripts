@@ -27,6 +27,10 @@ Remove the // from the code below and then paste all into bookmarklet.
 
 TODO: Add some notification to let the user know whether or not the blocks were
 successful. Dev console is currently the only indicator.
+
+NOTE: I believe there is a blocking cool-down limit if your account is < 100 rep. If
+so, you will only be able to block maybe 25 at a time and then have to wait before
+being able to block again.
 */
 
 //javascript:(()=>{
