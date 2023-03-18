@@ -581,7 +581,7 @@ See README.md on the Github page for full description of features
 
         jQuery.event.dispatch = function( nativeEvent ) {
             var elem = nativeEvent.srcElement;
-            //console.log(elem);
+            console.log(elem);
             function eventMatches(sel, events) {
                 var match = elem && elem.matches(sel) &&
                     nativeEvent.type === events;
