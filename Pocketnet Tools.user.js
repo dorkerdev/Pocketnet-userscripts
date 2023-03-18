@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Pocketnet Tools
 // @namespace    http://tampermonkey.net/
-// @version      23
+// @version      24
 // @description  Adds various UI enhancements to the post/content template (see top comment for details)
 // @author       dorker
 // @match        https://bastyon.com/*
@@ -468,6 +468,10 @@ See README.md on the Github page for full description of features
 
                                     addMetadata("Page", e.data.share?.data?.page);
                                 }
+                                /*
+                                Add Activity link to view user's activity
+                                */
+                                e.el.find(".sbtnxs").append($(`<span> ·  <a href="https://bastyon.com/userpage?id=activities&amp;user=${e.data.share.address}" style="font-weight:normal;">Activity</a></span>`));
 
                                 /*
                                 Outer post template. Adds permalink anchor alement to upper-right corner
