@@ -31,7 +31,9 @@ being able to block again. You will get the error code "money"... whatever that 
 */
 
 //javascript:(()=>{
-//debugger;
+/*
+debugger;
+*/
 let me = app.platform.sdk.user.me();
 
 /*get the logged-in user profile so you have access to its address and blocks*/
