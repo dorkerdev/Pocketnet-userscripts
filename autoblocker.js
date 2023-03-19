@@ -31,9 +31,9 @@ being able to block again. You will get the error code "money"... whatever that 
 */
 
 //javascript:(()=>{
-/*
+//*
 debugger;
-*/
+//*/
 let me = app.platform.sdk.user.me();
 
 /*get the logged-in user profile so you have access to its address and blocks*/
@@ -47,12 +47,14 @@ app.api.rpc("getuserprofile", [[me.address],"0"]).then(async d => {
             }
 		}
 	};
-    var addrs = prompt("Enter addresses to block, each on its own line");
+    let addrs = prompt("Enter addresses to block, each on its own line");
+    
+    if (!addrs) return;
+    
     /*
-    var addrs = `ahgdhjgshdjssdghdjdsjgh
+    let addrs = `ahgdhjgshdjssdghdjdsjgh
     fgflkfkjhfhkjfhjkfhkjk`;
-    */
-    let alreadyBlocked = 0;
+    //*/
 
     sitemessage("Auto-blocker initiating...");
     
@@ -67,14 +69,9 @@ app.api.rpc("getuserprofile", [[me.address],"0"]).then(async d => {
     
     let addrCount = addrs.length;
     
-    addrs = addrs.filter(x => {
-        if (d[0].blocking.includes(x)) {
-            alreadyBlocked++;
-            return false;
-        }
-        return true;
-    });
-    
+    addrs = addrs.filter(x => !d[0].blocking.includes(x));
+
+    let alreadyBlocked = addrCount - addrs.length;    
     let blocks = 0;
 
     let code = await forEachAsPromise(addrs, async (addr, clbk) => {
