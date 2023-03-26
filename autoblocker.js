@@ -31,22 +31,20 @@ being able to block again. You will get the error code "money"... whatever that 
 */
 
 //javascript:(()=>{
-//*
-debugger;
-//*/
+/*debugger;*/
 let me = app.platform.sdk.user.me();
 
 /*get the logged-in user profile so you have access to its address and blocks*/
 app.api.rpc("getuserprofile", [[me.address],"0"]).then(async d => {
-	const forEachAsPromise = async (items, action) => {
+    const forEachAsPromise = async (items, action) => {
         for (const item of items) {
-			let code;
+            let code;
             await action(item, x => code = x);
             if (code) {
                 if (code === "money" || code === 28) return code;
             }
-		}
-	};
+        }
+    };
     let addrs = prompt("Enter addresses to block, each on its own line");
     
     if (!addrs) return;
@@ -63,9 +61,9 @@ app.api.rpc("getuserprofile", [[me.address],"0"]).then(async d => {
     already been blocked
     */
     addrs = addrs
-		.split("\r\n")
-		.filter(x => x)
-		.map(x => x.split(":")[0].trim());
+        .split("\r\n")
+        .map(x => x.split(":")[0].trim())
+        .filter(x => x);
     
     let addrCount = addrs.length;
     
@@ -77,11 +75,11 @@ app.api.rpc("getuserprofile", [[me.address],"0"]).then(async d => {
     let code = await forEachAsPromise(addrs, async (addr, clbk) => {
         await new Promise((res,rej) => {
             app.platform.api.actions.blocking(addr, function(e,t) {
-				/*app.platform.ws.messages*/
+                /*app.platform.ws.messages*/
                 clbk(t);
                 if (!t && me.relation(addr, "blocking")) {
                     blocks++;
-                    if (blocks % 10 === 0) sitemessage(`Blocked ${blocks} of ${addrCount}...`);
+                    if (blocks % 10 === 0 || blocks === addrs.length) sitemessage(`Blocked ${blocks} of ${addrCount}...`);
                 }
                 res(t);
             });
