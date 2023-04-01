@@ -144,7 +144,7 @@ new Promise(async (resMain, rejMain) => {
                     if (!t) {                        
                         voteCount++;
                         alreadyVotedAddresses.push(share.addr);
-                        if (voteCount === maxVoteCount) {
+                        if (GetProgress() === 100) {
                             smishmortion();
                         }
                     }
@@ -165,7 +165,7 @@ new Promise(async (resMain, rejMain) => {
                 if (
                     (voteAttempts > 0 && voteAttempts % 10 === 0) || 
                     //voteAttempts === shares.length || 
-                    //GetProgress() == 100 ||
+                    GetProgress() == 100 ||
                     !goodState
                 ) {
                     updateVoteCount();
@@ -177,9 +177,9 @@ new Promise(async (resMain, rejMain) => {
     }); //end of foreach
     resMain();
 }).then(async () => {
-    updateVoteCount();
-    await setMessage("Mass vote completed");
-    await dumpMessages();
+    //updateVoteCount();
+    await showMessage("Mass vote completed");
+    //await dumpMessages();
     if (blockers.length > 0) {
         console.log(`Blockers\r\n${blockers.map(x=> `${x.addr}: ${x.name}`).join("\r\n")}`);
     }
