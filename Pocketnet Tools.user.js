@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Pocketnet Tools
 // @namespace    http://tampermonkey.net/
-// @version      24
+// @version      26
 // @description  Adds various UI enhancements to the post/content template (see top comment for details)
 // @author       dorker
 // @match        https://bastyon.com/*
@@ -289,7 +289,7 @@ See README.md on the Github page for full description of features
             //console.log(n.name);
             //if (n.name === "share") return null;
             try {
-                if (getUserSetting("showuserblocks") && n.name === "menu" && n.data.reports.blocking.if) {
+                if (getUserSetting("showuserblocks") && n.name === "menu" && n.data.reports?.blocking.if) {
                     delete n.data.reports.blocking.if;
                 }
             } catch {
@@ -458,6 +458,10 @@ See README.md on the Github page for full description of features
                                     function addMetadata(label, value) {
                                         if (!value) return;
                                         metricsContainer.append(`<div><span>${label}: ${value};</span></div>`)
+                                    }
+
+                                    if (e.data.share.userprofile) {
+                                        addMetadata("Address", e.data.share.userprofile.address);
                                     }
 
                                     addMetadata("Feed", e.data.share.language);
@@ -1189,7 +1193,9 @@ See README.md on the Github page for full description of features
                             switch(n) {
                                 case "gethierarchicalstrip":
                                 case "gethistoricalstrip":
-                                    if (!app.platform.sdk.users.storage[app.user.address.value]
+                                    if (
+                                        /*!app.platform.sdk.users.storage[app.user.address.value]*/
+                                        app.platform.psdk.userInfo.getmy()
                                         .relation(share.address, "subscribes") || feedFilter){
 
                                         ///*
